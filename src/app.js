@@ -3,6 +3,7 @@ const defaultAudiences = ["", "New Clinician", "Established Clinician", "Student
 const defaultOffers = ["", "Workshop", "12-Week Program", "Collaboration", "Professional Connection", "Not a Fit Right Now"];
 
 let followers = [];
+let activeTab = "dashboard";
 let choices = {
   stages: defaultStages,
   audiences: defaultAudiences,
@@ -20,9 +21,9 @@ const els = {
   totalCount: document.getElementById("total-count"),
   newCount: document.getElementById("new-count"),
   warmCount: document.getElementById("warm-count"),
-  followUpCount: document.getElementById("follow-up-count"),
+  offerCount: document.getElementById("offer-count"),
   filteredCount: document.getElementById("filtered-count"),
-  table: document.getElementById("followers-table"),
+  followersList: document.getElementById("followers-list"),
   newestList: document.getElementById("newest-list"),
   pipeline: document.getElementById("pipeline"),
   search: document.getElementById("search-input"),
@@ -36,6 +37,7 @@ const els = {
 
 document.getElementById("refresh-button").addEventListener("click", loadFollowers);
 document.getElementById("reset-filters-button").addEventListener("click", resetFilters);
+document.querySelectorAll(".tab").forEach((tab) => tab.addEventListener("click", changeTab));
 els.search.addEventListener("input", (event) => {
   filters.search = event.target.value.trim().toLowerCase();
   render();
@@ -56,6 +58,12 @@ els.form.addEventListener("submit", createFollower);
 
 hydrateChoiceControls();
 loadFollowers();
+
+function changeTab(event) {
+  activeTab = event.currentTarget.dataset.tab;
+  document.querySelectorAll(".tab").forEach((tab) => tab.classList.toggle("active", tab.dataset.tab === activeTab));
+  document.querySelectorAll(".view").forEach((view) => view.classList.toggle("active", view.id === `${activeTab}-view`));
+}
 
 async function loadFollowers() {
   setStatus("Loading Airtable followers...");
@@ -121,8 +129,8 @@ async function updateFollowerField(event) {
 }
 
 async function deleteFollower(event) {
-  const id = event.target.dataset.id;
-  const handle = event.target.dataset.handle;
+  const id = event.currentTarget.dataset.id;
+  const handle = event.currentTarget.dataset.handle;
   const confirmed = window.confirm(`Delete @${handle} from Airtable?`);
   if (!confirmed) return;
 
@@ -145,38 +153,57 @@ function render() {
   els.totalCount.textContent = followers.length;
   els.newCount.textContent = followers.filter((record) => record.relationshipStage === "New Follower").length;
   els.warmCount.textContent = followers.filter((record) => warmOffers.has(record.potentialOffer)).length;
-  els.followUpCount.textContent = followers.filter((record) => Boolean(record.potentialOffer)).length;
+  els.offerCount.textContent = followers.filter((record) => Boolean(record.potentialOffer)).length;
   els.filteredCount.textContent = `${rows.length} shown`;
 
-  renderTable(rows);
+  renderFollowers(rows);
   renderPipeline();
   renderNewest();
 }
 
-function renderTable(rows) {
+function renderFollowers(rows) {
   if (!rows.length) {
-    els.table.innerHTML = `<tr><td colspan="7" class="empty-table">No matching followers.</td></tr>`;
+    els.followersList.innerHTML = `<div class="empty">No matching followers.</div>`;
     return;
   }
 
-  els.table.innerHTML = rows
-    .map((record) => `
-      <tr>
-        <td data-label="Handle">
-          <a class="handle-link" href="https://www.instagram.com/${escapeAttribute(record.handle)}/" target="_blank" rel="noreferrer">@${escapeHtml(record.handle)}</a>
-        </td>
-        <td data-label="Date">${formatDate(record.dateAdded || record.createdTime)}</td>
-        <td data-label="Status">${selectHtml(record.id, "relationshipStage", choices.stages, record.relationshipStage)}</td>
-        <td data-label="Audience">${selectHtml(record.id, "audienceType", choices.audiences, record.audienceType)}</td>
-        <td data-label="Offer">${selectHtml(record.id, "potentialOffer", choices.offers, record.potentialOffer)}</td>
-        <td data-label="Notes"><input class="notes-input" data-id="${record.id}" data-field="notes" value="${escapeAttribute(record.notes || "")}" placeholder="Add note" /></td>
-        <td data-label="Actions"><button class="button delete-button" data-id="${record.id}" data-handle="${escapeAttribute(record.handle)}" type="button">Delete</button></td>
-      </tr>
-    `)
-    .join("");
+  els.followersList.innerHTML = rows.map(cardHtml).join("");
+  els.followersList.querySelectorAll("select, input").forEach((input) => input.addEventListener("change", updateFollowerField));
+  els.followersList.querySelectorAll(".delete-button").forEach((button) => button.addEventListener("click", deleteFollower));
+}
 
-  els.table.querySelectorAll("select, input").forEach((input) => input.addEventListener("change", updateFollowerField));
-  els.table.querySelectorAll(".delete-button").forEach((button) => button.addEventListener("click", deleteFollower));
+function cardHtml(record) {
+  const initial = (record.handle || "?").slice(0, 1).toUpperCase();
+  return `
+    <article class="follower-card">
+      <div class="card-top">
+        <div class="avatar">${escapeHtml(initial)}</div>
+        <div class="card-title">
+          <a class="handle-link" href="https://www.instagram.com/${escapeAttribute(record.handle)}/" target="_blank" rel="noreferrer">@${escapeHtml(record.handle)}</a>
+          <span>Added ${formatDate(record.dateAdded || record.createdTime)}</span>
+        </div>
+        <button class="icon-button delete-button" data-id="${record.id}" data-handle="${escapeAttribute(record.handle)}" type="button" aria-label="Delete @${escapeAttribute(record.handle)}">Delete</button>
+      </div>
+      <div class="field-grid">
+        <label>
+          <span>Status</span>
+          ${selectHtml(record.id, "relationshipStage", choices.stages, record.relationshipStage)}
+        </label>
+        <label>
+          <span>Audience</span>
+          ${selectHtml(record.id, "audienceType", choices.audiences, record.audienceType)}
+        </label>
+        <label>
+          <span>Offer</span>
+          ${selectHtml(record.id, "potentialOffer", choices.offers, record.potentialOffer)}
+        </label>
+      </div>
+      <label class="note-field">
+        <span>Notes</span>
+        <input class="notes-input" data-id="${record.id}" data-field="notes" value="${escapeAttribute(record.notes || "")}" placeholder="Add note" />
+      </label>
+    </article>
+  `;
 }
 
 function renderPipeline() {
@@ -185,14 +212,16 @@ function renderPipeline() {
     .filter(Boolean)
     .map((stage) => {
       const count = followers.filter((record) => record.relationshipStage === stage).length;
-      const width = Math.max(5, Math.round((count / max) * 100));
+      const width = Math.max(4, Math.round((count / max) * 100));
       return `
         <div class="stage-row">
           <div>
-            <div class="stage-label">${escapeHtml(stage)}</div>
+            <div class="stage-meta">
+              <span>${escapeHtml(stage)}</span>
+              <strong>${count}</strong>
+            </div>
             <div class="bar"><span style="width: ${width}%"></span></div>
           </div>
-          <strong>${count}</strong>
         </div>
       `;
     })
@@ -202,15 +231,18 @@ function renderPipeline() {
 function renderNewest() {
   const newest = [...followers].sort(sortByDateAdded).slice(0, 6);
   if (!newest.length) {
-    els.newestList.innerHTML = `<div class="empty compact-empty">No followers yet.</div>`;
+    els.newestList.innerHTML = `<div class="empty small-empty">No followers yet.</div>`;
     return;
   }
 
   els.newestList.innerHTML = newest
     .map((record) => `
       <article class="mini-card">
-        <strong>@${escapeHtml(record.handle)}</strong>
-        <span>${formatDate(record.dateAdded || record.createdTime)} · ${escapeHtml(record.relationshipStage || "No status")}</span>
+        <div class="mini-avatar">${escapeHtml(record.handle.slice(0, 1).toUpperCase())}</div>
+        <div>
+          <strong>@${escapeHtml(record.handle)}</strong>
+          <span>${formatDate(record.dateAdded || record.createdTime)} · ${escapeHtml(record.relationshipStage || "No status")}</span>
+        </div>
       </article>
     `)
     .join("");
