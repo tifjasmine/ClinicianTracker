@@ -57,7 +57,7 @@ async function createFollower(payload) {
   const fields = {};
   fields[config.fields.handle] = handle;
   fields[config.fields.dateAdded] = today();
-  if (payload.relationshipStage) fields[config.fields.stage] = payload.relationshipStage;
+  fields[config.fields.stage] = payload.relationshipStage || "New Follower";
   if (payload.audienceType) fields[config.fields.audience] = payload.audienceType;
   if (payload.potentialOffer) fields[config.fields.offer] = payload.potentialOffer;
   if (payload.notes) fields[config.fields.notes] = payload.notes;
