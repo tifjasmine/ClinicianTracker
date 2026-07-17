@@ -18,9 +18,8 @@
         </div>
         <nav class="nav" aria-label="Dashboard sections">
           <a href="#dashboard" class="active">Dashboard</a>
-          <a href="#quick-add">Quick Add</a>
+          <a href="#quick-add">Import</a>
           <a href="#followers">Followers</a>
-          <a href="#daily-check">Daily Check</a>
           <a href="#export">Export</a>
         </nav>
         <p class="sidebar-note">
@@ -66,10 +65,10 @@
             <section class="panel" id="quick-add">
               <div class="panel-header">
                 <div>
-                  <h2>Quick Add Handles</h2>
-                  <p>Paste handles, profile URLs, or copied Instagram follower text.</p>
+                  <h2>Import Followers</h2>
+                  <p>Add a baseline export, paste screenshot text, or drop in future follower snapshots.</p>
                 </div>
-                <span class="pill">Diffs automatically</span>
+                <span class="pill">Tracks add dates</span>
               </div>
               <div class="quick-add-grid">
                 <textarea id="handles-input" placeholder="@newtherapistjane&#10;https://www.instagram.com/therapygrad2026/&#10;groundedclinician"></textarea>
@@ -79,7 +78,7 @@
                     Import Export
                     <input id="export-file-input" type="file" accept=".json,.html,text/html,application/json" multiple />
                   </label>
-                  <p class="helper" id="import-result">Import Instagram JSON or followers_1.html files.</p>
+                  <p class="helper" id="import-result">Import Instagram JSON or followers_1.html files. New records keep the date they were added to this CRM.</p>
                 </div>
               </div>
             </section>
@@ -125,6 +124,8 @@
                   <thead>
                     <tr>
                       <th>Handle</th>
+                      <th>Date Added</th>
+                      <th>IG Followed</th>
                       <th>Stage</th>
                       <th>Audience</th>
                       <th>Potential Offer</th>
@@ -139,20 +140,12 @@
           </div>
 
           <aside class="side-column">
-            <section class="panel" id="daily-check">
+            <section class="panel" id="import-history">
               <div class="panel-header compact">
-                <h2>Daily Check</h2>
-                <span class="pill">Watch mode</span>
+                <h2>Import History</h2>
+                <span class="pill">Snapshots</span>
               </div>
-              <div class="daily-box">
-                <label for="target-account">Tracked account</label>
-                <input id="target-account" type="text" value="@theconfidentclinician" />
-                <p>
-                  Browser-only mode can compare pasted or imported snapshots. A fully automatic daily follower identity check needs a backend plus approved Instagram access or a connected automation service.
-                </p>
-                <button class="button full" id="copy-watch-plan-button" type="button">Copy daily watcher plan</button>
-                <p class="helper" id="watch-plan-result"></p>
-              </div>
+              <div class="history-list" id="import-history-list"></div>
             </section>
 
             <section class="panel">
@@ -180,9 +173,9 @@
                 <h2>Best Workflow</h2>
               </div>
               <ol class="workflow">
-                <li>Paste visible follower handles when you review Instagram.</li>
-                <li>Use an official export occasionally to audit the full list.</li>
-                <li>Move promising people through the CRM stages.</li>
+                <li>Import your followers_1.html file as the baseline.</li>
+                <li>Use future exports or pasted screenshot text as snapshots.</li>
+                <li>Filter new followers and move good leads through stages.</li>
                 <li>Export CSV into Airtable when you want a larger database.</li>
               </ol>
             </section>
