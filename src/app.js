@@ -29,9 +29,7 @@ const els = {
   stageFilter: document.getElementById("stage-filter"),
   audienceFilter: document.getElementById("audience-filter"),
   offerFilter: document.getElementById("offer-filter"),
-  quickStage: document.getElementById("quick-stage-input"),
-  quickAudience: document.getElementById("quick-audience-input"),
-  quickOffer: document.getElementById("quick-offer-input"),
+  handleInput: document.getElementById("handle-input"),
   form: document.getElementById("quick-add-form"),
   formStatus: document.getElementById("form-status"),
 };
@@ -80,10 +78,7 @@ async function createFollower(event) {
   const formData = new FormData(els.form);
   const payload = {
     handle: formData.get("handle"),
-    relationshipStage: formData.get("relationshipStage"),
-    audienceType: formData.get("audienceType"),
-    potentialOffer: formData.get("potentialOffer"),
-    notes: formData.get("notes"),
+    relationshipStage: "New Follower",
   };
 
   if (!normalizeHandle(payload.handle)) {
@@ -98,7 +93,7 @@ async function createFollower(event) {
       body: JSON.stringify(payload),
     });
     els.form.reset();
-    hydrateChoiceControls();
+    els.handleInput.focus();
     els.formStatus.textContent = "Added to Airtable.";
     await loadFollowers();
   } catch (error) {
@@ -234,9 +229,6 @@ function hydrateChoiceControls() {
   fillSelect(els.stageFilter, choices.stages, "All statuses");
   fillSelect(els.audienceFilter, choices.audiences.filter(Boolean), "All audiences");
   fillSelect(els.offerFilter, choices.offers.filter(Boolean), "All offers");
-  fillSelect(els.quickStage, choices.stages, "New Follower", "New Follower");
-  fillSelect(els.quickAudience, choices.audiences, "Not set");
-  fillSelect(els.quickOffer, choices.offers, "Not set");
 }
 
 function fillSelect(select, options, firstLabel, selected = "") {
