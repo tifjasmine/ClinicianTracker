@@ -174,6 +174,14 @@ function pick(fields, names) {
       return fields[name];
     }
   }
+  const normalizedEntries = Object.entries(fields).map(([name, value]) => [name.trim(), value]);
+  for (const name of names) {
+    const entry = normalizedEntries.find(([fieldName]) => fieldName === name.trim());
+    if (entry && entry[1] !== undefined && entry[1] !== null) {
+      if (typeof entry[1] === "object" && entry[1]?.name) return entry[1].name;
+      return entry[1];
+    }
+  }
   return "";
 }
 
