@@ -412,7 +412,7 @@ textarea {
 
 table {
   width: 100%;
-  min-width: 860px;
+  min-width: 1040px;
   border-collapse: collapse;
 }
 
@@ -497,34 +497,39 @@ select,
 
 .export-box,
 .workflow,
-.daily-box {
+.history-list {
   padding: 15px 16px;
 }
 
-.daily-box {
+.history-list {
   display: grid;
   gap: 10px;
 }
 
-.daily-box label {
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 750;
-}
-
-.daily-box input {
-  width: 100%;
-  min-height: 36px;
+.history-item {
   border: 1px solid var(--line);
   border-radius: 8px;
-  padding: 7px 10px;
+  padding: 10px;
+  background: #fbfbf7;
 }
 
-.daily-box p {
-  margin: 0;
-  color: var(--muted);
+.history-item strong,
+.history-item span {
+  display: block;
+}
+
+.history-item strong {
+  margin-bottom: 4px;
   font-size: 13px;
-  line-height: 1.5;
+}
+
+.history-item span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.compact-empty {
+  padding: 8px 0;
 }
 
 .workflow {
@@ -587,6 +592,63 @@ select,
 
   .filters {
     grid-template-columns: 1fr;
+  }
+
+  .table-wrap {
+    overflow: visible;
+  }
+
+  table,
+  thead,
+  tbody,
+  tr,
+  th,
+  td {
+    display: block;
+  }
+
+  table {
+    min-width: 0;
+  }
+
+  thead {
+    display: none;
+  }
+
+  tbody {
+    display: grid;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  tr {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fff;
+    padding: 10px;
+  }
+
+  td {
+    border: 0;
+    padding: 8px 0;
+  }
+
+  td::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 5px;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 750;
+    text-transform: uppercase;
+  }
+
+  td:first-child::before {
+    display: none;
+  }
+
+  .delete-button {
+    width: 100%;
   }
 
   .panel-header {
