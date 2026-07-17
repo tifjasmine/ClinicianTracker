@@ -1,276 +1,200 @@
-const STORAGE_KEY = "clinician-tracker-followers-v1";
-const IMPORT_KEY = "clinician-tracker-last-import-v1";
-const IMPORT_HISTORY_KEY = "clinician-tracker-import-history-v1";
+const defaultStages = ["New Follower", "Messaged", "Responded", "Potential Lead", "Offer Shared", "Purchased"];
+const defaultAudiences = ["", "New Clinician", "Established Clinician", "Student / Intern", "Supervisor", "Professional Connection", "Unsure"];
+const defaultOffers = ["", "Workshop", "12-Week Program", "Collaboration", "Professional Connection", "Not a Fit Right Now"];
 
-const stages = ["New Follower", "Messaged", "Responded", "Potential Lead", "Offer Shared", "Purchased"];
-const audienceTypes = ["", "New Clinician", "Established Clinician", "Student / Intern", "Supervisor", "Professional Connection", "Unsure"];
-const offerTypes = ["", "Workshop", "12-Week Program", "Collaboration", "Professional Connection", "Not a Fit Right Now"];
-
-const demoFollowers = [
-  recordForHandle("newtherapistjane", "Demo", {
-    audienceType: "New Clinician",
-    potentialOffer: "Workshop",
-    instagramFollowedAt: "2026-07-16T14:40:00.000Z",
-  }),
-  recordForHandle("therapygrad2026", "Demo", {
-    audienceType: "New Clinician",
-    potentialOffer: "12-Week Program",
-    instagramFollowedAt: "2026-07-16T13:05:00.000Z",
-  }),
-  recordForHandle("groundedclinician", "Demo", {
-    relationshipStage: "Messaged",
-    audienceType: "Established Clinician",
-    potentialOffer: "Collaboration",
-    instagramFollowedAt: "2026-07-15T18:08:00.000Z",
-  }),
-  recordForHandle("supervisionnotes", "Demo", {
-    relationshipStage: "Potential Lead",
-    audienceType: "New Clinician",
-    potentialOffer: "Workshop",
-    instagramFollowedAt: "2026-07-12T09:31:00.000Z",
-  }),
-  recordForHandle("practicebuilder", "Demo", {
-    relationshipStage: "Responded",
-    audienceType: "Established Clinician",
-    potentialOffer: "Professional Connection",
-    instagramFollowedAt: "2026-07-10T16:12:00.000Z",
-  }),
-];
-
-let followers = loadFollowers();
-let lastImport = loadLastImport();
-let importHistory = loadImportHistory();
-let searchQuery = "";
-let stageFilter = "";
-let audienceFilter = "";
-let offerFilter = "";
-let newOnlyFilter = false;
+let followers = [];
+let choices = {
+  stages: defaultStages,
+  audiences: defaultAudiences,
+  offers: defaultOffers,
+};
+let filters = {
+  search: "",
+  stage: "",
+  audience: "",
+  offer: "",
+};
 
 const els = {
   statusCopy: document.getElementById("status-copy"),
   totalCount: document.getElementById("total-count"),
   newCount: document.getElementById("new-count"),
-  messageCount: document.getElementById("message-count"),
   warmCount: document.getElementById("warm-count"),
-  handlesInput: document.getElementById("handles-input"),
-  importResult: document.getElementById("import-result"),
-  newestPill: document.getElementById("newest-pill"),
+  followUpCount: document.getElementById("follow-up-count"),
+  filteredCount: document.getElementById("filtered-count"),
+  table: document.getElementById("followers-table"),
   newestList: document.getElementById("newest-list"),
-  followersTable: document.getElementById("followers-table"),
   pipeline: document.getElementById("pipeline"),
-  searchInput: document.getElementById("search-input"),
+  search: document.getElementById("search-input"),
   stageFilter: document.getElementById("stage-filter"),
   audienceFilter: document.getElementById("audience-filter"),
   offerFilter: document.getElementById("offer-filter"),
-  newFilter: document.getElementById("new-filter"),
-  filteredCount: document.getElementById("filtered-count"),
-  importHistoryList: document.getElementById("import-history-list"),
+  quickStage: document.getElementById("quick-stage-input"),
+  quickAudience: document.getElementById("quick-audience-input"),
+  quickOffer: document.getElementById("quick-offer-input"),
+  form: document.getElementById("quick-add-form"),
+  formStatus: document.getElementById("form-status"),
 };
 
-hydrateFilterOptions();
-document.getElementById("import-handles-button").addEventListener("click", importPastedHandles);
-document.getElementById("export-file-input").addEventListener("change", importExportFiles);
-document.getElementById("load-demo-button").addEventListener("click", loadDemo);
-document.getElementById("clear-button").addEventListener("click", clearData);
-document.getElementById("download-csv-button").addEventListener("click", downloadCsv);
-document.getElementById("download-csv-button-side").addEventListener("click", downloadCsv);
-document.getElementById("download-json-button").addEventListener("click", downloadJson);
+document.getElementById("refresh-button").addEventListener("click", loadFollowers);
 document.getElementById("reset-filters-button").addEventListener("click", resetFilters);
-els.searchInput.addEventListener("input", (event) => {
-  searchQuery = event.target.value.trim().toLowerCase();
+els.search.addEventListener("input", (event) => {
+  filters.search = event.target.value.trim().toLowerCase();
   render();
 });
 els.stageFilter.addEventListener("change", (event) => {
-  stageFilter = event.target.value;
+  filters.stage = event.target.value;
   render();
 });
 els.audienceFilter.addEventListener("change", (event) => {
-  audienceFilter = event.target.value;
+  filters.audience = event.target.value;
   render();
 });
 els.offerFilter.addEventListener("change", (event) => {
-  offerFilter = event.target.value;
+  filters.offer = event.target.value;
   render();
 });
-els.newFilter.addEventListener("change", (event) => {
-  newOnlyFilter = event.target.checked;
-  render();
-});
+els.form.addEventListener("submit", createFollower);
 
-render();
+hydrateChoiceControls();
+loadFollowers();
 
-function importPastedHandles() {
-  const handles = extractHandles(els.handlesInput.value);
+async function loadFollowers() {
+  setStatus("Loading Airtable followers...");
+  try {
+    const data = await apiRequest("/.netlify/functions/followers");
+    followers = data.records || [];
+    choices = mergeChoices(data.choices || {});
+    hydrateChoiceControls();
+    render();
+    setStatus(`${followers.length} Airtable follower${followers.length === 1 ? "" : "s"} loaded.`);
+  } catch (error) {
+    followers = [];
+    render();
+    setStatus(error.message);
+  }
+}
 
-  if (!handles.length) {
-    els.importResult.textContent = "Paste at least one handle or Instagram profile URL first.";
+async function createFollower(event) {
+  event.preventDefault();
+  const formData = new FormData(els.form);
+  const payload = {
+    handle: formData.get("handle"),
+    relationshipStage: formData.get("relationshipStage"),
+    audienceType: formData.get("audienceType"),
+    potentialOffer: formData.get("potentialOffer"),
+    notes: formData.get("notes"),
+  };
+
+  if (!normalizeHandle(payload.handle)) {
+    els.formStatus.textContent = "Add an Instagram handle first.";
     return;
   }
 
-  const result = upsertHandles(handles, "Pasted Instagram follower list");
-  els.handlesInput.value = "";
-  els.importResult.textContent = `${result.newCount} new follower${result.newCount === 1 ? "" : "s"} added. ${followers.length} total known.`;
-  render();
-}
-
-async function importExportFiles(event) {
-  const files = [...event.target.files];
-  if (!files.length) return;
-
-  const importedFollowers = [];
-
-  for (const file of files) {
-    try {
-      const text = await file.text();
-      importedFollowers.push(...parseInstagramExportFile(text, file.name));
-    } catch {
-      els.importResult.textContent = `Could not read ${file.name}. Use Instagram JSON or followers_1.html export files.`;
-      return;
-    }
-  }
-
-  const result = upsertFollowerRecords(importedFollowers, "Instagram export import");
-  els.importResult.textContent = `${result.newCount} new follower${result.newCount === 1 ? "" : "s"} added from export. ${followers.length} total known.`;
-  event.target.value = "";
-  render();
-}
-
-function upsertHandles(rawHandles, source) {
-  return upsertFollowerRecords(uniqueHandles(rawHandles).map((handle) => ({ handle })), source);
-}
-
-function upsertFollowerRecords(records, source) {
-  const now = new Date().toISOString();
-  const existing = new Map(followers.map((follower) => [follower.handle, follower]));
-  const newHandles = [];
-
-  for (const importedRecord of uniqueFollowerRecords(records)) {
-    const handle = importedRecord.handle;
-    if (!existing.has(handle)) {
-      const record = recordForHandle(handle, source, {
-        profileUrl: importedRecord.profileUrl || `https://www.instagram.com/${handle}/`,
-        instagramFollowedAt: importedRecord.instagramFollowedAt || "",
-        firstDetectedAt: now,
-        lastSeenAt: now,
-      });
-      existing.set(handle, record);
-      newHandles.push(handle);
-      continue;
-    }
-
-    const record = existing.get(handle);
-    existing.set(handle, {
-      ...record,
-      profileUrl: record.profileUrl || importedRecord.profileUrl || `https://www.instagram.com/${handle}/`,
-      instagramFollowedAt: record.instagramFollowedAt || importedRecord.instagramFollowedAt || "",
-      lastSeenAt: now,
-      status: "Current",
+  els.formStatus.textContent = "Adding to Airtable...";
+  try {
+    await apiRequest("/.netlify/functions/followers", {
+      method: "POST",
+      body: JSON.stringify(payload),
     });
+    els.form.reset();
+    hydrateChoiceControls();
+    els.formStatus.textContent = "Added to Airtable.";
+    await loadFollowers();
+  } catch (error) {
+    els.formStatus.textContent = error.message;
   }
+}
 
-  followers = [...existing.values()].sort(sortByNewest);
-  lastImport = {
-    importedAt: now,
-    source,
-    submittedCount: records.length,
-    newCount: newHandles.length,
-    newHandles,
-  };
-  importHistory = [lastImport, ...importHistory].slice(0, 20);
-  save();
+async function updateFollowerField(event) {
+  const id = event.target.dataset.id;
+  const field = event.target.dataset.field;
+  const value = event.target.value;
 
-  return lastImport;
+  followers = followers.map((record) => (record.id === id ? { ...record, [field]: value } : record));
+  render();
+
+  try {
+    await apiRequest("/.netlify/functions/followers", {
+      method: "PATCH",
+      body: JSON.stringify({ id, fields: { [field]: value } }),
+    });
+  } catch (error) {
+    setStatus(error.message);
+    await loadFollowers();
+  }
+}
+
+async function deleteFollower(event) {
+  const id = event.target.dataset.id;
+  const handle = event.target.dataset.handle;
+  const confirmed = window.confirm(`Delete @${handle} from Airtable?`);
+  if (!confirmed) return;
+
+  try {
+    await apiRequest(`/.netlify/functions/followers?id=${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    });
+    followers = followers.filter((record) => record.id !== id);
+    render();
+    setStatus(`Deleted @${handle}.`);
+  } catch (error) {
+    setStatus(error.message);
+  }
 }
 
 function render() {
-  const rows = visibleFollowers();
-  const newHandles = new Set(lastImport?.newHandles || []);
+  const rows = filteredFollowers();
   const warmOffers = new Set(["Workshop", "12-Week Program"]);
 
   els.totalCount.textContent = followers.length;
-  els.newCount.textContent = newHandles.size;
-  els.messageCount.textContent = followers.filter((follower) => follower.relationshipStage === "New Follower").length;
-  els.warmCount.textContent = followers.filter((follower) => warmOffers.has(follower.potentialOffer)).length;
-  els.statusCopy.textContent = followers.length
-    ? `${followers.length} saved follower${followers.length === 1 ? "" : "s"} in this browser.`
-    : "Ready for pasted handles or Instagram export files.";
+  els.newCount.textContent = followers.filter((record) => record.relationshipStage === "New Follower").length;
+  els.warmCount.textContent = followers.filter((record) => warmOffers.has(record.potentialOffer)).length;
+  els.followUpCount.textContent = followers.filter((record) => Boolean(record.potentialOffer)).length;
   els.filteredCount.textContent = `${rows.length} shown`;
 
-  renderNewest(followers.slice().sort(sortByNewest).slice(0, 10), newHandles);
-  renderTable(rows, newHandles);
+  renderTable(rows);
   renderPipeline();
-  renderImportHistory();
+  renderNewest();
 }
 
-function renderNewest(rows, newHandles) {
-  els.newestPill.textContent = `${rows.length} shown`;
+function renderTable(rows) {
   if (!rows.length) {
-    els.newestList.innerHTML = `<div class="empty">No followers yet. Paste handles or load the demo to preview the CRM.</div>`;
+    els.table.innerHTML = `<tr><td colspan="7" class="empty-table">No matching followers.</td></tr>`;
     return;
   }
 
-  els.newestList.innerHTML = rows
-    .map((follower) => {
-      const isNew = newHandles.has(follower.handle);
-      return `
-        <article class="follower-card">
-          <div class="avatar">${escapeHtml(follower.handle.slice(0, 1).toUpperCase())}</div>
-          <div class="follower-main">
-            <strong>@${escapeHtml(follower.handle)}</strong>
-            <span>Added ${formatDate(follower.firstDetectedAt)} · IG followed ${formatDate(follower.instagramFollowedAt)}</span>
-          </div>
-          <span class="status ${isNew ? "new" : ""}">${isNew ? "New" : escapeHtml(follower.relationshipStage || "Saved")}</span>
-        </article>
-      `;
-    })
-    .join("");
-}
-
-function renderTable(rows, newHandles) {
-  if (!rows.length) {
-    els.followersTable.innerHTML = `<tr><td colspan="8" class="empty-table">No matching followers.</td></tr>`;
-    return;
-  }
-
-  els.followersTable.innerHTML = rows
-    .map((follower) => `
-      <tr data-handle="${escapeHtml(follower.handle)}">
+  els.table.innerHTML = rows
+    .map((record) => `
+      <tr>
         <td data-label="Handle">
-          <div class="table-handle">
-            <strong>@${escapeHtml(follower.handle)}</strong>
-            ${newHandles.has(follower.handle) ? '<span class="mini-pill">New</span>' : ""}
-          </div>
+          <a class="handle-link" href="https://www.instagram.com/${escapeAttribute(record.handle)}/" target="_blank" rel="noreferrer">@${escapeHtml(record.handle)}</a>
         </td>
-        <td data-label="Date Added">${formatDate(follower.firstDetectedAt)}</td>
-        <td data-label="IG Followed">${formatDate(follower.instagramFollowedAt)}</td>
-        <td data-label="Stage">${selectHtml("relationshipStage", follower.handle, stages, follower.relationshipStage)}</td>
-        <td data-label="Audience">${selectHtml("audienceType", follower.handle, audienceTypes, follower.audienceType)}</td>
-        <td data-label="Potential Offer">${selectHtml("potentialOffer", follower.handle, offerTypes, follower.potentialOffer)}</td>
-        <td data-label="Notes"><input class="notes-input" data-field="notes" data-handle="${escapeHtml(follower.handle)}" value="${escapeAttribute(follower.notes || "")}" placeholder="Add note" /></td>
-        <td data-label="Actions"><button class="icon-button delete-button" data-handle="${escapeHtml(follower.handle)}" type="button" aria-label="Delete @${escapeAttribute(follower.handle)}">Delete</button></td>
+        <td data-label="Date">${formatDate(record.dateAdded || record.createdTime)}</td>
+        <td data-label="Status">${selectHtml(record.id, "relationshipStage", choices.stages, record.relationshipStage)}</td>
+        <td data-label="Audience">${selectHtml(record.id, "audienceType", choices.audiences, record.audienceType)}</td>
+        <td data-label="Offer">${selectHtml(record.id, "potentialOffer", choices.offers, record.potentialOffer)}</td>
+        <td data-label="Notes"><input class="notes-input" data-id="${record.id}" data-field="notes" value="${escapeAttribute(record.notes || "")}" placeholder="Add note" /></td>
+        <td data-label="Actions"><button class="button delete-button" data-id="${record.id}" data-handle="${escapeAttribute(record.handle)}" type="button">Delete</button></td>
       </tr>
     `)
     .join("");
 
-  els.followersTable.querySelectorAll("select, input").forEach((input) => {
-    input.addEventListener("change", updateFollowerField);
-  });
-  els.followersTable.querySelectorAll(".delete-button").forEach((button) => {
-    button.addEventListener("click", deleteFollower);
-  });
+  els.table.querySelectorAll("select, input").forEach((input) => input.addEventListener("change", updateFollowerField));
+  els.table.querySelectorAll(".delete-button").forEach((button) => button.addEventListener("click", deleteFollower));
 }
 
 function renderPipeline() {
-  const max = Math.max(1, ...stages.map((stage) => followers.filter((follower) => follower.relationshipStage === stage).length));
-
-  els.pipeline.innerHTML = stages
+  const max = Math.max(1, ...choices.stages.map((stage) => followers.filter((record) => record.relationshipStage === stage).length));
+  els.pipeline.innerHTML = choices.stages
+    .filter(Boolean)
     .map((stage) => {
-      const count = followers.filter((follower) => follower.relationshipStage === stage).length;
-      const width = Math.max(4, Math.round((count / max) * 100));
+      const count = followers.filter((record) => record.relationshipStage === stage).length;
+      const width = Math.max(5, Math.round((count / max) * 100));
       return `
         <div class="stage-row">
           <div>
-            <div class="stage-label">${stage}</div>
+            <div class="stage-label">${escapeHtml(stage)}</div>
             <div class="bar"><span style="width: ${width}%"></span></div>
           </div>
           <strong>${count}</strong>
@@ -280,323 +204,90 @@ function renderPipeline() {
     .join("");
 }
 
-function renderImportHistory() {
-  if (!importHistory.length) {
-    els.importHistoryList.innerHTML = `<div class="empty compact-empty">No imports yet. Start with your followers_1.html file.</div>`;
+function renderNewest() {
+  const newest = [...followers].sort(sortByDateAdded).slice(0, 6);
+  if (!newest.length) {
+    els.newestList.innerHTML = `<div class="empty compact-empty">No followers yet.</div>`;
     return;
   }
 
-  els.importHistoryList.innerHTML = importHistory
-    .slice(0, 6)
-    .map((item) => `
-      <article class="history-item">
-        <strong>${formatDateTime(item.importedAt)}</strong>
-        <span>${escapeHtml(item.source || "Import")} · ${item.newCount || 0} new · ${item.submittedCount || 0} checked</span>
+  els.newestList.innerHTML = newest
+    .map((record) => `
+      <article class="mini-card">
+        <strong>@${escapeHtml(record.handle)}</strong>
+        <span>${formatDate(record.dateAdded || record.createdTime)} · ${escapeHtml(record.relationshipStage || "No status")}</span>
       </article>
     `)
     .join("");
 }
 
-function updateFollowerField(event) {
-  const handle = event.target.dataset.handle;
-  const field = event.target.dataset.field;
-  followers = followers.map((follower) =>
-    follower.handle === handle
-      ? {
-          ...follower,
-          [field]: event.target.value,
-        }
-      : follower
-  );
-  save();
-  render();
+function filteredFollowers() {
+  return [...followers]
+    .filter((record) => !filters.search || `${record.handle} ${record.notes}`.toLowerCase().includes(filters.search))
+    .filter((record) => !filters.stage || record.relationshipStage === filters.stage)
+    .filter((record) => !filters.audience || record.audienceType === filters.audience)
+    .filter((record) => !filters.offer || record.potentialOffer === filters.offer)
+    .sort(sortByDateAdded);
 }
 
-function deleteFollower(event) {
-  const handle = event.target.dataset.handle;
-  const confirmed = window.confirm(`Delete @${handle} from ClinicianTracker?`);
-  if (!confirmed) return;
-
-  followers = followers.filter((follower) => follower.handle !== handle);
-  if (lastImport?.newHandles?.includes(handle)) {
-    lastImport = {
-      ...lastImport,
-      newHandles: lastImport.newHandles.filter((newHandle) => newHandle !== handle),
-      newCount: Math.max(0, (lastImport.newCount || 0) - 1),
-    };
-  }
-  save();
-  render();
+function hydrateChoiceControls() {
+  fillSelect(els.stageFilter, choices.stages, "All statuses");
+  fillSelect(els.audienceFilter, choices.audiences.filter(Boolean), "All audiences");
+  fillSelect(els.offerFilter, choices.offers.filter(Boolean), "All offers");
+  fillSelect(els.quickStage, choices.stages, "New Follower", "New Follower");
+  fillSelect(els.quickAudience, choices.audiences, "Not set");
+  fillSelect(els.quickOffer, choices.offers, "Not set");
 }
 
-function loadDemo() {
-  followers = demoFollowers.map((follower) => ({ ...follower }));
-  lastImport = {
-    importedAt: new Date().toISOString(),
-    source: "Demo",
-    submittedCount: followers.length,
-    newCount: 2,
-    newHandles: ["newtherapistjane", "therapygrad2026"],
-  };
-  importHistory = [lastImport];
-  save();
-  els.importResult.textContent = "Demo data loaded.";
-  render();
+function fillSelect(select, options, firstLabel, selected = "") {
+  select.innerHTML = [
+    `<option value="">${escapeHtml(firstLabel)}</option>`,
+    ...unique([...(options || [])]).filter(Boolean).map((option) => `<option value="${escapeAttribute(option)}" ${option === selected ? "selected" : ""}>${escapeHtml(option)}</option>`),
+  ].join("");
 }
 
-function clearData() {
-  const confirmed = window.confirm("Clear all saved follower CRM data from this browser?");
-  if (!confirmed) return;
-  followers = [];
-  lastImport = null;
-  importHistory = [];
-  localStorage.removeItem(STORAGE_KEY);
-  localStorage.removeItem(IMPORT_KEY);
-  localStorage.removeItem(IMPORT_HISTORY_KEY);
-  els.importResult.textContent = "Saved data cleared.";
-  render();
-}
-
-function downloadCsv() {
-  const headers = [
-    "Instagram Handle",
-    "Profile URL",
-    "First Detected",
-    "Last Seen",
-    "Instagram Followed At",
-    "Status",
-    "Source",
-    "Relationship Stage",
-    "Audience Type",
-    "Potential Offer",
-    "Notes",
-  ];
-
-  const rows = followers.map((follower) => [
-    follower.handle,
-    follower.profileUrl,
-    follower.firstDetectedAt,
-    follower.lastSeenAt,
-    follower.instagramFollowedAt,
-    follower.status,
-    follower.source,
-    follower.relationshipStage,
-    follower.audienceType,
-    follower.potentialOffer,
-    follower.notes,
-  ]);
-
-  downloadFile("clinician-tracker-airtable.csv", toCsv([headers, ...rows]), "text/csv");
-}
-
-function downloadJson() {
-  const payload = JSON.stringify({ followers, lastImport, importHistory }, null, 2);
-  downloadFile("clinician-tracker-backup.json", payload, "application/json");
-}
-
-function extractHandles(text) {
-  const ignored = new Set(["instagram", "explore", "accounts", "direct", "reel", "reels", "stories", "p"]);
-  const found = new Set();
-  const patterns = [
-    /(?:https?:\/\/)?(?:www\.)?instagram\.com\/([A-Za-z0-9._]{1,30})(?:[/?#]|$)/g,
-    /@([A-Za-z0-9._]{1,30})/g,
-    /(^|\s)([A-Za-z0-9._]{3,30})(?=\s|$)/g,
-  ];
-
-  for (const pattern of patterns) {
-    let match;
-    while ((match = pattern.exec(text)) !== null) {
-      const handle = normalizeHandle(match[2] || match[1]);
-      if (handle && !ignored.has(handle) && !handle.includes("..")) {
-        found.add(handle);
-      }
-    }
-  }
-
-  return [...found];
-}
-
-function parseInstagramExportFile(text, fileName) {
-  if (fileName.toLowerCase().endsWith(".html")) {
-    return parseInstagramHtml(text);
-  }
-
-  const json = JSON.parse(text);
-  return parseInstagramJson(json);
-}
-
-function parseInstagramJson(json) {
-  const entries = Array.isArray(json) ? json : Object.values(json).flat();
-  const parsed = [];
-
-  for (const entry of entries) {
-    if (!Array.isArray(entry?.string_list_data)) continue;
-    for (const item of entry.string_list_data) {
-      const handle = normalizeHandle(item?.value);
-      if (!handle) continue;
-      parsed.push({
-        handle,
-        profileUrl: item?.href || `https://www.instagram.com/${handle}/`,
-        instagramFollowedAt: item?.timestamp ? new Date(item.timestamp * 1000).toISOString() : "",
-      });
-    }
-  }
-
-  return parsed;
-}
-
-function parseInstagramHtml(html) {
-  const doc = new DOMParser().parseFromString(html, "text/html");
-  const links = [...doc.querySelectorAll('a[href*="instagram.com/"]')];
-
-  return links
-    .map((link) => {
-      const handle = normalizeHandle(link.textContent || link.href.split("instagram.com/")[1] || "");
-      const dateText = link.parentElement?.parentElement?.querySelector("div:nth-child(2)")?.textContent?.trim() || "";
-      return {
-        handle,
-        profileUrl: `https://www.instagram.com/${handle}/`,
-        instagramFollowedAt: parseInstagramDate(dateText),
-      };
-    })
-    .filter((record) => record.handle);
-}
-
-function visibleFollowers() {
-  const newHandles = new Set(lastImport?.newHandles || []);
-  return followers
-    .filter((follower) => !searchQuery || follower.handle.includes(searchQuery))
-    .filter((follower) => !stageFilter || follower.relationshipStage === stageFilter)
-    .filter((follower) => !audienceFilter || follower.audienceType === audienceFilter)
-    .filter((follower) => !offerFilter || follower.potentialOffer === offerFilter)
-    .filter((follower) => !newOnlyFilter || newHandles.has(follower.handle))
-    .sort(sortByNewest);
-}
-
-function hydrateFilterOptions() {
-  fillSelect(els.stageFilter, stages, "All stages");
-  fillSelect(els.audienceFilter, audienceTypes.filter(Boolean), "All audiences");
-  fillSelect(els.offerFilter, offerTypes.filter(Boolean), "All offers");
-}
-
-function fillSelect(select, options, firstLabel) {
-  select.innerHTML = [`<option value="">${firstLabel}</option>`, ...options.map((option) => `<option value="${escapeAttribute(option)}">${escapeHtml(option)}</option>`)].join("");
-}
-
-function resetFilters() {
-  searchQuery = "";
-  stageFilter = "";
-  audienceFilter = "";
-  offerFilter = "";
-  newOnlyFilter = false;
-  els.searchInput.value = "";
-  els.stageFilter.value = "";
-  els.audienceFilter.value = "";
-  els.offerFilter.value = "";
-  els.newFilter.checked = false;
-  render();
-}
-
-function recordForHandle(handle, source, overrides = {}) {
-  const now = new Date().toISOString();
-  const normalized = normalizeHandle(handle);
-  return {
-    handle: normalized,
-    profileUrl: `https://www.instagram.com/${normalized}/`,
-    instagramFollowedAt: "",
-    firstDetectedAt: now,
-    lastSeenAt: now,
-    source,
-    relationshipStage: "New Follower",
-    audienceType: "",
-    potentialOffer: "",
-    notes: "",
-    status: "Current",
-    ...overrides,
-  };
-}
-
-function normalizeHandle(value) {
-  if (!value || typeof value !== "string") return "";
-  return value.replace(/^@/, "").trim().toLowerCase().replace(/[^a-z0-9._]/g, "");
-}
-
-function uniqueHandles(handles) {
-  return [...new Set(handles.map(normalizeHandle).filter(Boolean))];
-}
-
-function uniqueFollowerRecords(records) {
-  const byHandle = new Map();
-  for (const record of records) {
-    const handle = normalizeHandle(record.handle);
-    if (!handle || byHandle.has(handle)) continue;
-    byHandle.set(handle, {
-      ...record,
-      handle,
-    });
-  }
-  return [...byHandle.values()];
-}
-
-function parseInstagramDate(value) {
-  if (!value) return "";
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? "" : parsed.toISOString();
-}
-
-function sortByNewest(a, b) {
-  return dateValue(b.firstDetectedAt || b.instagramFollowedAt) - dateValue(a.firstDetectedAt || a.instagramFollowedAt);
-}
-
-function save() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(followers));
-  localStorage.setItem(IMPORT_KEY, JSON.stringify(lastImport));
-  localStorage.setItem(IMPORT_HISTORY_KEY, JSON.stringify(importHistory));
-}
-
-function loadFollowers() {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-  } catch {
-    return [];
-  }
-}
-
-function loadLastImport() {
-  try {
-    return JSON.parse(localStorage.getItem(IMPORT_KEY) || "null");
-  } catch {
-    return null;
-  }
-}
-
-function loadImportHistory() {
-  try {
-    return JSON.parse(localStorage.getItem(IMPORT_HISTORY_KEY) || "[]");
-  } catch {
-    return [];
-  }
-}
-
-function selectHtml(field, handle, options, selectedValue) {
+function selectHtml(id, field, options, value) {
   return `
-    <select data-field="${field}" data-handle="${escapeHtml(handle)}">
-      ${options.map((option) => `<option value="${escapeAttribute(option)}" ${option === selectedValue ? "selected" : ""}>${escapeHtml(option || "Not set")}</option>`).join("")}
+    <select data-id="${id}" data-field="${field}">
+      <option value="">Not set</option>
+      ${unique(options).filter(Boolean).map((option) => `<option value="${escapeAttribute(option)}" ${option === value ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}
     </select>
   `;
 }
 
-function toCsv(rows) {
-  return `${rows.map((row) => row.map((cell) => `"${String(cell || "").replaceAll('"', '""')}"`).join(",")).join("\n")}\n`;
+function resetFilters() {
+  filters = { search: "", stage: "", audience: "", offer: "" };
+  els.search.value = "";
+  hydrateChoiceControls();
+  render();
 }
 
-function downloadFile(filename, content, type) {
-  const url = URL.createObjectURL(new Blob([content], { type }));
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(url);
+async function apiRequest(path, options = {}) {
+  const response = await fetch(path, {
+    headers: { "Content-Type": "application/json" },
+    ...options,
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error || "Airtable request failed.");
+  }
+  return data;
+}
+
+function mergeChoices(apiChoices) {
+  return {
+    stages: unique([...(apiChoices.stages || []), ...defaultStages]),
+    audiences: unique(["", ...(apiChoices.audiences || []), ...defaultAudiences]),
+    offers: unique(["", ...(apiChoices.offers || []), ...defaultOffers]),
+  };
+}
+
+function normalizeHandle(value) {
+  return String(value || "").replace(/^@/, "").trim().toLowerCase().replace(/[^a-z0-9._]/g, "");
+}
+
+function sortByDateAdded(a, b) {
+  return dateValue(b.dateAdded || b.createdTime) - dateValue(a.dateAdded || a.createdTime);
 }
 
 function dateValue(value) {
@@ -610,10 +301,12 @@ function formatDate(value) {
   return new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" }).format(date);
 }
 
-function formatDateTime(value) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Not set";
-  return new Intl.DateTimeFormat("en", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(date);
+function setStatus(message) {
+  els.statusCopy.textContent = message;
+}
+
+function unique(values) {
+  return [...new Set((values || []).filter((value) => value !== undefined && value !== null))];
 }
 
 function escapeHtml(value) {
