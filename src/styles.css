@@ -382,6 +382,30 @@ textarea {
   padding: 7px 10px;
 }
 
+.filters {
+  display: grid;
+  grid-template-columns: minmax(170px, 1fr) repeat(3, minmax(150px, 0.65fr)) auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 12px;
+  border-bottom: 1px solid var(--line);
+  background: #fbfbf7;
+}
+
+.filters .search {
+  width: 100%;
+}
+
+.checkbox-filter {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
 .table-wrap {
   overflow-x: auto;
 }
@@ -416,6 +440,20 @@ select,
   padding: 6px 8px;
   background: #fff;
   color: var(--ink);
+}
+
+.icon-button {
+  min-height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.delete-button:hover {
+  border-color: var(--danger);
+  color: var(--danger);
 }
 
 .table-handle {
@@ -458,8 +496,35 @@ select,
 }
 
 .export-box,
-.workflow {
+.workflow,
+.daily-box {
   padding: 15px 16px;
+}
+
+.daily-box {
+  display: grid;
+  gap: 10px;
+}
+
+.daily-box label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.daily-box input {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 7px 10px;
+}
+
+.daily-box p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .workflow {
@@ -517,6 +582,10 @@ select,
   }
 
   .quick-add-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .filters {
     grid-template-columns: 1fr;
   }
 
