@@ -21,10 +21,10 @@ export async function handler(event) {
       return json(500, { error: "Missing AIRTABLE_TOKEN in Netlify environment variables." });
     }
 
-    if (event.httpMethod === "GET") return listFollowers();
-    if (event.httpMethod === "POST") return createFollower(JSON.parse(event.body || "{}"));
-    if (event.httpMethod === "PATCH") return updateFollower(JSON.parse(event.body || "{}"));
-    if (event.httpMethod === "DELETE") return deleteFollower(event.queryStringParameters?.id);
+    if (event.httpMethod === "GET") return await listFollowers();
+    if (event.httpMethod === "POST") return await createFollower(JSON.parse(event.body || "{}"));
+    if (event.httpMethod === "PATCH") return await updateFollower(JSON.parse(event.body || "{}"));
+    if (event.httpMethod === "DELETE") return await deleteFollower(event.queryStringParameters?.id);
 
     return json(405, { error: "Method not allowed." });
   } catch (error) {
@@ -62,13 +62,7 @@ async function createFollower(payload) {
   if (payload.potentialOffer) fields[config.fields.offer] = payload.potentialOffer;
   if (payload.notes) fields[config.fields.notes] = payload.notes;
 
-  const data = await airtableFetch("", {
-    method: "POST",
-    body: JSON.stringify({
-      records: [{ fields }],
-      typecast: true,
-    }),
-  });
+  const data = await writeRecordsWithKnownFields("POST", [{ fields }], [config.fields.handle]);
 
   return json(200, { record: normalizeRecord(data.records?.[0]) });
 }
@@ -87,13 +81,9 @@ async function updateFollower(payload) {
     if (airtableField) fields[airtableField] = value || null;
   }
 
-  const data = await airtableFetch("", {
-    method: "PATCH",
-    body: JSON.stringify({
-      records: [{ id: payload.id, fields }],
-      typecast: true,
-    }),
-  });
+  if (!Object.keys(fields).length) return json(400, { error: "No supported Airtable fields were provided." });
+
+  const data = await writeRecordsWithKnownFields("PATCH", [{ id: payload.id, fields }]);
 
   return json(200, { record: normalizeRecord(data.records?.[0]) });
 }
@@ -102,6 +92,38 @@ async function deleteFollower(id) {
   if (!id) return json(400, { error: "Record id is required." });
   await airtableFetch(`?records[]=${encodeURIComponent(id)}`, { method: "DELETE" });
   return json(200, { ok: true });
+}
+
+async function writeRecordsWithKnownFields(method, records, requiredFields = []) {
+  const remainingRecords = records.map((record) => ({ ...record, fields: { ...record.fields } }));
+
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    try {
+      return await airtableFetch("", {
+        method,
+        body: JSON.stringify({
+          records: remainingRecords,
+          typecast: true,
+        }),
+      });
+    } catch (error) {
+      const unknownField = parseUnknownField(error.message);
+      if (!unknownField) throw error;
+      if (requiredFields.includes(unknownField)) {
+        throw new Error(`Airtable is missing the required "${unknownField}" field.`);
+      }
+
+      remainingRecords.forEach((record) => {
+        delete record.fields[unknownField];
+      });
+
+      if (!remainingRecords.some((record) => Object.keys(record.fields).length)) {
+        throw new Error("Airtable did not recognize any fields for this update.");
+      }
+    }
+  }
+
+  throw new Error("Airtable kept rejecting field names for this table.");
 }
 
 async function airtableFetch(path = "", options = {}) {
@@ -157,6 +179,10 @@ function pick(fields, names) {
 
 function normalizeHandle(value) {
   return String(value || "").replace(/^@/, "").trim().toLowerCase().replace(/[^a-z0-9._]/g, "");
+}
+
+function parseUnknownField(message = "") {
+  return message.match(/Unknown field name: "([^"]+)"/)?.[1] || "";
 }
 
 function unique(values) {
