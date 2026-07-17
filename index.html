@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ClinicianTracker</title>
+    <link rel="stylesheet" href="src/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">CT</div>
+          <div>
+            <strong>ClinicianTracker</strong>
+            <span>Instagram lead CRM</span>
+          </div>
+        </div>
+        <nav class="nav" aria-label="Dashboard sections">
+          <a href="#dashboard" class="active">Dashboard</a>
+          <a href="#quick-add">Quick Add</a>
+          <a href="#followers">Followers</a>
+          <a href="#export">Export</a>
+        </nav>
+        <p class="sidebar-note">
+          Track new clinician followers, segment warm leads, and keep a simple follow-up queue without a heavyweight CRM.
+        </p>
+      </aside>
+
+      <main>
+        <header class="topbar" id="dashboard">
+          <div>
+            <p class="eyebrow">Instagram follower CRM</p>
+            <h1>Clinician lead tracker</h1>
+            <p class="subtitle" id="status-copy">Ready for pasted handles or Instagram export files.</p>
+          </div>
+          <div class="top-actions">
+            <button class="button" id="load-demo-button" type="button">Load demo</button>
+            <button class="button danger" id="clear-button" type="button">Clear data</button>
+            <button class="button primary" id="download-csv-button" type="button">Download CSV</button>
+          </div>
+        </header>
+
+        <section class="metrics" aria-label="CRM metrics">
+          <article class="metric">
+            <span>Total followers</span>
+            <strong id="total-count">0</strong>
+          </article>
+          <article class="metric">
+            <span>New this import</span>
+            <strong id="new-count">0</strong>
+          </article>
+          <article class="metric">
+            <span>Need message</span>
+            <strong id="message-count">0</strong>
+          </article>
+          <article class="metric">
+            <span>Warm potential</span>
+            <strong id="warm-count">0</strong>
+          </article>
+        </section>
+
+        <section class="workspace">
+          <div class="main-column">
+            <section class="panel" id="quick-add">
+              <div class="panel-header">
+                <div>
+                  <h2>Quick Add Handles</h2>
+                  <p>Paste handles, profile URLs, or copied Instagram follower text.</p>
+                </div>
+                <span class="pill">Diffs automatically</span>
+              </div>
+              <div class="quick-add-grid">
+                <textarea id="handles-input" placeholder="@newtherapistjane&#10;https://www.instagram.com/therapygrad2026/&#10;groundedclinician"></textarea>
+                <div class="quick-add-actions">
+                  <button class="button primary" id="import-handles-button" type="button">Add pasted followers</button>
+                  <label class="file-picker">
+                    Import JSON
+                    <input id="json-file-input" type="file" accept=".json,application/json" multiple />
+                  </label>
+                  <p class="helper" id="import-result">New handles will appear as New Follower.</p>
+                </div>
+              </div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-header">
+                <div>
+                  <h2>Newest Followers</h2>
+                  <p>Most recently detected records from paste/import activity.</p>
+                </div>
+                <span class="pill" id="newest-pill">0 shown</span>
+              </div>
+              <div class="cards" id="newest-list"></div>
+            </section>
+
+            <section class="panel" id="followers">
+              <div class="panel-header">
+                <div>
+                  <h2>Follower CRM</h2>
+                  <p>Edit stage, audience, offer, and notes before exporting.</p>
+                </div>
+                <input id="search-input" class="search" type="search" placeholder="Search handles" />
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Handle</th>
+                      <th>Stage</th>
+                      <th>Audience</th>
+                      <th>Potential Offer</th>
+                      <th>Notes</th>
+                    </tr>
+                  </thead>
+                  <tbody id="followers-table"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+
+          <aside class="side-column">
+            <section class="panel">
+              <div class="panel-header compact">
+                <h2>Pipeline</h2>
+                <span class="pill">Stages</span>
+              </div>
+              <div class="pipeline" id="pipeline"></div>
+            </section>
+
+            <section class="panel" id="export">
+              <div class="panel-header compact">
+                <h2>Export</h2>
+                <span class="pill">Airtable-ready</span>
+              </div>
+              <div class="export-box">
+                <p>Download a CSV with the fields your Airtable CRM needs.</p>
+                <button class="button primary full" id="download-csv-button-side" type="button">Download Airtable CSV</button>
+                <button class="button full" id="download-json-button" type="button">Backup JSON</button>
+              </div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-header compact">
+                <h2>Best Workflow</h2>
+              </div>
+              <ol class="workflow">
+                <li>Paste visible follower handles when you review Instagram.</li>
+                <li>Use an official export occasionally to audit the full list.</li>
+                <li>Move promising people through the CRM stages.</li>
+                <li>Export CSV into Airtable when you want a larger database.</li>
+              </ol>
+            </section>
+          </aside>
+        </section>
+      </main>
+    </div>
+
+    <script type="module" src="src/app.js"></script>
+  </body>
+</html>
