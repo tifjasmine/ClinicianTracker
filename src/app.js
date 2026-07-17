@@ -39,6 +39,10 @@ const demoFollowers = [
 let followers = loadFollowers();
 let lastImport = loadLastImport();
 let searchQuery = "";
+let stageFilter = "";
+let audienceFilter = "";
+let offerFilter = "";
+let newOnlyFilter = false;
 
 const els = {
   statusCopy: document.getElementById("status-copy"),
@@ -53,8 +57,16 @@ const els = {
   followersTable: document.getElementById("followers-table"),
   pipeline: document.getElementById("pipeline"),
   searchInput: document.getElementById("search-input"),
+  stageFilter: document.getElementById("stage-filter"),
+  audienceFilter: document.getElementById("audience-filter"),
+  offerFilter: document.getElementById("offer-filter"),
+  newFilter: document.getElementById("new-filter"),
+  filteredCount: document.getElementById("filtered-count"),
+  targetAccount: document.getElementById("target-account"),
+  watchPlanResult: document.getElementById("watch-plan-result"),
 };
 
+hydrateFilterOptions();
 document.getElementById("import-handles-button").addEventListener("click", importPastedHandles);
 document.getElementById("json-file-input").addEventListener("change", importJsonFiles);
 document.getElementById("load-demo-button").addEventListener("click", loadDemo);
@@ -62,8 +74,26 @@ document.getElementById("clear-button").addEventListener("click", clearData);
 document.getElementById("download-csv-button").addEventListener("click", downloadCsv);
 document.getElementById("download-csv-button-side").addEventListener("click", downloadCsv);
 document.getElementById("download-json-button").addEventListener("click", downloadJson);
+document.getElementById("reset-filters-button").addEventListener("click", resetFilters);
+document.getElementById("copy-watch-plan-button").addEventListener("click", copyWatchPlan);
 els.searchInput.addEventListener("input", (event) => {
   searchQuery = event.target.value.trim().toLowerCase();
+  render();
+});
+els.stageFilter.addEventListener("change", (event) => {
+  stageFilter = event.target.value;
+  render();
+});
+els.audienceFilter.addEventListener("change", (event) => {
+  audienceFilter = event.target.value;
+  render();
+});
+els.offerFilter.addEventListener("change", (event) => {
+  offerFilter = event.target.value;
+  render();
+});
+els.newFilter.addEventListener("change", (event) => {
+  newOnlyFilter = event.target.checked;
   render();
 });
 
@@ -154,6 +184,7 @@ function render() {
   els.statusCopy.textContent = followers.length
     ? `${followers.length} saved follower${followers.length === 1 ? "" : "s"} in this browser.`
     : "Ready for pasted handles or Instagram export files.";
+  els.filteredCount.textContent = `${rows.length} shown`;
 
   renderNewest(followers.slice().sort(sortByNewest).slice(0, 10), newHandles);
   renderTable(rows, newHandles);
@@ -186,7 +217,7 @@ function renderNewest(rows, newHandles) {
 
 function renderTable(rows, newHandles) {
   if (!rows.length) {
-    els.followersTable.innerHTML = `<tr><td colspan="5" class="empty-table">No matching followers.</td></tr>`;
+    els.followersTable.innerHTML = `<tr><td colspan="6" class="empty-table">No matching followers.</td></tr>`;
     return;
   }
 
@@ -203,12 +234,16 @@ function renderTable(rows, newHandles) {
         <td>${selectHtml("audienceType", follower.handle, audienceTypes, follower.audienceType)}</td>
         <td>${selectHtml("potentialOffer", follower.handle, offerTypes, follower.potentialOffer)}</td>
         <td><input class="notes-input" data-field="notes" data-handle="${escapeHtml(follower.handle)}" value="${escapeAttribute(follower.notes || "")}" placeholder="Add note" /></td>
+        <td><button class="icon-button delete-button" data-handle="${escapeHtml(follower.handle)}" type="button" aria-label="Delete @${escapeAttribute(follower.handle)}">Delete</button></td>
       </tr>
     `)
     .join("");
 
   els.followersTable.querySelectorAll("select, input").forEach((input) => {
     input.addEventListener("change", updateFollowerField);
+  });
+  els.followersTable.querySelectorAll(".delete-button").forEach((button) => {
+    button.addEventListener("click", deleteFollower);
   });
 }
 
@@ -243,6 +278,23 @@ function updateFollowerField(event) {
         }
       : follower
   );
+  save();
+  render();
+}
+
+function deleteFollower(event) {
+  const handle = event.target.dataset.handle;
+  const confirmed = window.confirm(`Delete @${handle} from ClinicianTracker?`);
+  if (!confirmed) return;
+
+  followers = followers.filter((follower) => follower.handle !== handle);
+  if (lastImport?.newHandles?.includes(handle)) {
+    lastImport = {
+      ...lastImport,
+      newHandles: lastImport.newHandles.filter((newHandle) => newHandle !== handle),
+      newCount: Math.max(0, (lastImport.newCount || 0) - 1),
+    };
+  }
   save();
   render();
 }
@@ -309,6 +361,25 @@ function downloadJson() {
   downloadFile("clinician-tracker-backup.json", payload, "application/json");
 }
 
+function copyWatchPlan() {
+  const account = els.targetAccount.value.trim() || "@theconfidentclinician";
+  const plan = [
+    `Daily watcher plan for ${account}`,
+    "",
+    "1. Store follower records in Airtable or Supabase instead of browser localStorage.",
+    "2. Run a Netlify Scheduled Function once per day.",
+    "3. Use approved Instagram/Meta access for counts and interactions, or a compliant third-party service for identity snapshots.",
+    "4. Compare today's snapshot to yesterday's known handles.",
+    "5. Add newly detected handles to ClinicianTracker as New Follower.",
+    "6. Notify by email/Slack only when new handles are detected.",
+    "",
+    "Note: avoid automated login scraping of Instagram follower modals because it can be brittle and may put the account at risk.",
+  ].join("\n");
+
+  navigator.clipboard?.writeText(plan);
+  els.watchPlanResult.textContent = "Daily watcher plan copied.";
+}
+
 function extractHandles(text) {
   const ignored = new Set(["instagram", "explore", "accounts", "direct", "reel", "reels", "stories", "p"]);
   const found = new Set();
@@ -352,9 +423,38 @@ function parseInstagramJson(json) {
 }
 
 function visibleFollowers() {
+  const newHandles = new Set(lastImport?.newHandles || []);
   return followers
     .filter((follower) => !searchQuery || follower.handle.includes(searchQuery))
+    .filter((follower) => !stageFilter || follower.relationshipStage === stageFilter)
+    .filter((follower) => !audienceFilter || follower.audienceType === audienceFilter)
+    .filter((follower) => !offerFilter || follower.potentialOffer === offerFilter)
+    .filter((follower) => !newOnlyFilter || newHandles.has(follower.handle))
     .sort(sortByNewest);
+}
+
+function hydrateFilterOptions() {
+  fillSelect(els.stageFilter, stages, "All stages");
+  fillSelect(els.audienceFilter, audienceTypes.filter(Boolean), "All audiences");
+  fillSelect(els.offerFilter, offerTypes.filter(Boolean), "All offers");
+}
+
+function fillSelect(select, options, firstLabel) {
+  select.innerHTML = [`<option value="">${firstLabel}</option>`, ...options.map((option) => `<option value="${escapeAttribute(option)}">${escapeHtml(option)}</option>`)].join("");
+}
+
+function resetFilters() {
+  searchQuery = "";
+  stageFilter = "";
+  audienceFilter = "";
+  offerFilter = "";
+  newOnlyFilter = false;
+  els.searchInput.value = "";
+  els.stageFilter.value = "";
+  els.audienceFilter.value = "";
+  els.offerFilter.value = "";
+  els.newFilter.checked = false;
+  render();
 }
 
 function recordForHandle(handle, source, overrides = {}) {
