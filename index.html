@@ -8,105 +8,95 @@
   </head>
   <body>
     <main class="app-shell">
-      <section class="hero">
-        <div>
-          <p class="eyebrow">Airtable-connected CRM</p>
-          <h1>ClinicianTracker</h1>
-          <p class="subtitle" id="status-copy">Loading Airtable followers...</p>
+      <header class="topbar">
+        <div class="brand-lockup">
+          <div class="brand-mark">CT</div>
+          <div>
+            <p class="eyebrow">Airtable CRM</p>
+            <h1>ClinicianTracker</h1>
+          </div>
         </div>
         <button class="button ghost" id="refresh-button" type="button">Refresh</button>
-      </section>
+      </header>
 
-      <section class="metrics" aria-label="Follower metrics">
-        <article class="metric">
-          <span>Total</span>
-          <strong id="total-count">0</strong>
-        </article>
-        <article class="metric">
-          <span>New</span>
-          <strong id="new-count">0</strong>
-        </article>
-        <article class="metric">
-          <span>Warm</span>
-          <strong id="warm-count">0</strong>
-        </article>
-        <article class="metric">
-          <span>Offers</span>
-          <strong id="follow-up-count">0</strong>
-        </article>
-      </section>
+      <p class="status-line" id="status-copy">Loading Airtable followers...</p>
 
-      <section class="workspace">
-        <div class="main-column">
-          <section class="panel">
+      <nav class="tabs" aria-label="Tracker views">
+        <button class="tab active" data-tab="dashboard" type="button">Dashboard</button>
+        <button class="tab" data-tab="followers" type="button">Followers</button>
+      </nav>
+
+      <section class="view active" id="dashboard-view">
+        <section class="quick-panel">
+          <div>
+            <h2>Quick Add</h2>
+            <p>Add a new follower to Airtable with today as the date and New Follower as the status.</p>
+          </div>
+          <form class="quick-add" id="quick-add-form">
+            <input id="handle-input" name="handle" type="text" placeholder="@newtherapistjane" autocomplete="off" required />
+            <button class="button primary" type="submit">Add follower</button>
+          </form>
+          <p class="form-status" id="form-status"></p>
+        </section>
+
+        <section class="metrics" aria-label="Follower metrics">
+          <article class="metric">
+            <span>Total followers</span>
+            <strong id="total-count">0</strong>
+          </article>
+          <article class="metric">
+            <span>New followers</span>
+            <strong id="new-count">0</strong>
+          </article>
+          <article class="metric">
+            <span>Warm offers</span>
+            <strong id="warm-count">0</strong>
+          </article>
+          <article class="metric">
+            <span>Offers tagged</span>
+            <strong id="offer-count">0</strong>
+          </article>
+        </section>
+
+        <section class="dashboard-grid">
+          <article class="panel">
             <div class="panel-header">
-              <div>
-                <h2>Quick Add</h2>
-                <p>Add a new Instagram follower directly to Airtable.</p>
-              </div>
-              <span class="pill">Writes to Airtable</span>
-            </div>
-            <form class="quick-add" id="quick-add-form">
-              <label>
-                <span>Instagram handle</span>
-                <input id="handle-input" name="handle" type="text" placeholder="@newtherapistjane" autocomplete="off" required />
-              </label>
-              <button class="button primary" type="submit">Add follower</button>
-            </form>
-            <p class="form-status" id="form-status"></p>
-          </section>
-
-          <section class="panel">
-            <div class="panel-header">
-              <div>
-                <h2>Followers</h2>
-                <p>Filter, update, and clean up Airtable records.</p>
-              </div>
-              <span class="pill" id="filtered-count">0 shown</span>
-            </div>
-            <div class="filters">
-              <input id="search-input" class="search" type="search" placeholder="Search handles or notes" />
-              <select id="stage-filter" aria-label="Filter by status"></select>
-              <select id="audience-filter" aria-label="Filter by audience"></select>
-              <select id="offer-filter" aria-label="Filter by offer"></select>
-              <button class="button" id="reset-filters-button" type="button">Reset</button>
-            </div>
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Handle</th>
-                    <th>Date</th>
-                    <th>Status</th>
-                    <th>Audience</th>
-                    <th>Offer</th>
-                    <th>Notes</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody id="followers-table"></tbody>
-              </table>
-            </div>
-          </section>
-        </div>
-
-        <aside class="side-column">
-          <section class="panel">
-            <div class="panel-header compact">
               <h2>Pipeline</h2>
-              <span class="pill">Statuses</span>
+              <span class="pill">Status</span>
             </div>
             <div class="pipeline" id="pipeline"></div>
-          </section>
+          </article>
 
-          <section class="panel">
-            <div class="panel-header compact">
+          <article class="panel">
+            <div class="panel-header">
               <h2>Newest Added</h2>
               <span class="pill">Airtable</span>
             </div>
-            <div class="cards" id="newest-list"></div>
-          </section>
-        </aside>
+            <div class="mini-list" id="newest-list"></div>
+          </article>
+        </section>
+      </section>
+
+      <section class="view" id="followers-view">
+        <section class="panel followers-panel">
+          <div class="panel-header followers-header">
+            <div>
+              <h2>Followers</h2>
+              <p>Filter, update, and keep your Airtable clean.</p>
+            </div>
+            <span class="pill" id="filtered-count">0 shown</span>
+          </div>
+
+          <div class="filters">
+            <input id="search-input" class="search" type="search" placeholder="Search handles or notes" />
+            <select id="stage-filter" aria-label="Filter by status"></select>
+            <select id="audience-filter" aria-label="Filter by audience"></select>
+            <select id="offer-filter" aria-label="Filter by offer"></select>
+            <button class="button" id="reset-filters-button" type="button">Reset</button>
+          </div>
+
+          <div class="follower-grid" id="followers-list"></div>
+        </section>
       </section>
     </main>
 
