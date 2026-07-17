@@ -7,182 +7,124 @@
     <link rel="stylesheet" href="src/styles.css" />
   </head>
   <body>
-    <div class="app-shell">
-      <aside class="sidebar">
-        <div class="brand">
-          <div class="brand-mark">CT</div>
-          <div>
-            <strong>ClinicianTracker</strong>
-            <span>Instagram lead CRM</span>
-          </div>
+    <main class="app-shell">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">Airtable-connected CRM</p>
+          <h1>ClinicianTracker</h1>
+          <p class="subtitle" id="status-copy">Loading Airtable followers...</p>
         </div>
-        <nav class="nav" aria-label="Dashboard sections">
-          <a href="#dashboard" class="active">Dashboard</a>
-          <a href="#quick-add">Import</a>
-          <a href="#followers">Followers</a>
-          <a href="#export">Export</a>
-        </nav>
-        <p class="sidebar-note">
-          Track new clinician followers, segment warm leads, and keep a simple follow-up queue without a heavyweight CRM.
-        </p>
-      </aside>
+        <button class="button ghost" id="refresh-button" type="button">Refresh</button>
+      </section>
 
-      <main>
-        <header class="topbar" id="dashboard">
-          <div>
-            <p class="eyebrow">Instagram follower CRM</p>
-            <h1>Clinician lead tracker</h1>
-            <p class="subtitle" id="status-copy">Ready for pasted handles or Instagram export files.</p>
-          </div>
-          <div class="top-actions">
-            <button class="button" id="load-demo-button" type="button">Load demo</button>
-            <button class="button danger" id="clear-button" type="button">Clear data</button>
-            <button class="button primary" id="download-csv-button" type="button">Download CSV</button>
-          </div>
-        </header>
+      <section class="metrics" aria-label="Follower metrics">
+        <article class="metric">
+          <span>Total</span>
+          <strong id="total-count">0</strong>
+        </article>
+        <article class="metric">
+          <span>New</span>
+          <strong id="new-count">0</strong>
+        </article>
+        <article class="metric">
+          <span>Warm</span>
+          <strong id="warm-count">0</strong>
+        </article>
+        <article class="metric">
+          <span>Offers</span>
+          <strong id="follow-up-count">0</strong>
+        </article>
+      </section>
 
-        <section class="metrics" aria-label="CRM metrics">
-          <article class="metric">
-            <span>Total followers</span>
-            <strong id="total-count">0</strong>
-          </article>
-          <article class="metric">
-            <span>New this import</span>
-            <strong id="new-count">0</strong>
-          </article>
-          <article class="metric">
-            <span>Need message</span>
-            <strong id="message-count">0</strong>
-          </article>
-          <article class="metric">
-            <span>Warm potential</span>
-            <strong id="warm-count">0</strong>
-          </article>
-        </section>
+      <section class="workspace">
+        <div class="main-column">
+          <section class="panel">
+            <div class="panel-header">
+              <div>
+                <h2>Quick Add</h2>
+                <p>Add a new Instagram follower directly to Airtable.</p>
+              </div>
+              <span class="pill">Writes to Airtable</span>
+            </div>
+            <form class="quick-add" id="quick-add-form">
+              <label>
+                <span>Instagram handle</span>
+                <input id="handle-input" name="handle" type="text" placeholder="@newtherapistjane" autocomplete="off" required />
+              </label>
+              <label>
+                <span>Status</span>
+                <select id="quick-stage-input" name="relationshipStage"></select>
+              </label>
+              <label>
+                <span>Audience</span>
+                <select id="quick-audience-input" name="audienceType"></select>
+              </label>
+              <label>
+                <span>Potential offer</span>
+                <select id="quick-offer-input" name="potentialOffer"></select>
+              </label>
+              <label class="wide">
+                <span>Notes</span>
+                <input id="quick-notes-input" name="notes" type="text" placeholder="Optional note" />
+              </label>
+              <button class="button primary" type="submit">Add follower</button>
+            </form>
+            <p class="form-status" id="form-status"></p>
+          </section>
 
-        <section class="workspace">
-          <div class="main-column">
-            <section class="panel" id="quick-add">
-              <div class="panel-header">
-                <div>
-                  <h2>Import Followers</h2>
-                  <p>Add a baseline export, paste screenshot text, or drop in future follower snapshots.</p>
-                </div>
-                <span class="pill">Tracks add dates</span>
+          <section class="panel">
+            <div class="panel-header">
+              <div>
+                <h2>Followers</h2>
+                <p>Filter, update, and clean up Airtable records.</p>
               </div>
-              <div class="quick-add-grid">
-                <textarea id="handles-input" placeholder="@newtherapistjane&#10;https://www.instagram.com/therapygrad2026/&#10;groundedclinician"></textarea>
-                <div class="quick-add-actions">
-                  <button class="button primary" id="import-handles-button" type="button">Add pasted followers</button>
-                  <label class="file-picker">
-                    Import Export
-                    <input id="export-file-input" type="file" accept=".json,.html,text/html,application/json" multiple />
-                  </label>
-                  <p class="helper" id="import-result">Import Instagram JSON or followers_1.html files. New records keep the date they were added to this CRM.</p>
-                </div>
-              </div>
-            </section>
+              <span class="pill" id="filtered-count">0 shown</span>
+            </div>
+            <div class="filters">
+              <input id="search-input" class="search" type="search" placeholder="Search handles or notes" />
+              <select id="stage-filter" aria-label="Filter by status"></select>
+              <select id="audience-filter" aria-label="Filter by audience"></select>
+              <select id="offer-filter" aria-label="Filter by offer"></select>
+              <button class="button" id="reset-filters-button" type="button">Reset</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Handle</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th>Audience</th>
+                    <th>Offer</th>
+                    <th>Notes</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="followers-table"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
 
-            <section class="panel">
-              <div class="panel-header">
-                <div>
-                  <h2>Newest Followers</h2>
-                  <p>Most recently detected records from paste/import activity.</p>
-                </div>
-                <span class="pill" id="newest-pill">0 shown</span>
-              </div>
-              <div class="cards" id="newest-list"></div>
-            </section>
+        <aside class="side-column">
+          <section class="panel">
+            <div class="panel-header compact">
+              <h2>Pipeline</h2>
+              <span class="pill">Statuses</span>
+            </div>
+            <div class="pipeline" id="pipeline"></div>
+          </section>
 
-            <section class="panel" id="followers">
-              <div class="panel-header">
-                <div>
-                  <h2>Follower CRM</h2>
-                  <p>Edit stage, audience, offer, and notes before exporting.</p>
-                </div>
-                <span class="pill" id="filtered-count">0 shown</span>
-              </div>
-              <div class="filters">
-                <input id="search-input" class="search" type="search" placeholder="Search handles" />
-                <select id="stage-filter" aria-label="Filter by stage">
-                  <option value="">All stages</option>
-                </select>
-                <select id="audience-filter" aria-label="Filter by audience">
-                  <option value="">All audiences</option>
-                </select>
-                <select id="offer-filter" aria-label="Filter by offer">
-                  <option value="">All offers</option>
-                </select>
-                <label class="checkbox-filter">
-                  <input id="new-filter" type="checkbox" />
-                  New only
-                </label>
-                <button class="button" id="reset-filters-button" type="button">Reset filters</button>
-              </div>
-              <div class="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Handle</th>
-                      <th>Date Added</th>
-                      <th>IG Followed</th>
-                      <th>Stage</th>
-                      <th>Audience</th>
-                      <th>Potential Offer</th>
-                      <th>Notes</th>
-                      <th></th>
-                    </tr>
-                  </thead>
-                  <tbody id="followers-table"></tbody>
-                </table>
-              </div>
-            </section>
-          </div>
-
-          <aside class="side-column">
-            <section class="panel" id="import-history">
-              <div class="panel-header compact">
-                <h2>Import History</h2>
-                <span class="pill">Snapshots</span>
-              </div>
-              <div class="history-list" id="import-history-list"></div>
-            </section>
-
-            <section class="panel">
-              <div class="panel-header compact">
-                <h2>Pipeline</h2>
-                <span class="pill">Stages</span>
-              </div>
-              <div class="pipeline" id="pipeline"></div>
-            </section>
-
-            <section class="panel" id="export">
-              <div class="panel-header compact">
-                <h2>Export</h2>
-                <span class="pill">Airtable-ready</span>
-              </div>
-              <div class="export-box">
-                <p>Download a CSV with the fields your Airtable CRM needs.</p>
-                <button class="button primary full" id="download-csv-button-side" type="button">Download Airtable CSV</button>
-                <button class="button full" id="download-json-button" type="button">Backup JSON</button>
-              </div>
-            </section>
-
-            <section class="panel">
-              <div class="panel-header compact">
-                <h2>Best Workflow</h2>
-              </div>
-              <ol class="workflow">
-                <li>Import your followers_1.html file as the baseline.</li>
-                <li>Use future exports or pasted screenshot text as snapshots.</li>
-                <li>Filter new followers and move good leads through stages.</li>
-                <li>Export CSV into Airtable when you want a larger database.</li>
-              </ol>
-            </section>
-          </aside>
-        </section>
-      </main>
-    </div>
+          <section class="panel">
+            <div class="panel-header compact">
+              <h2>Newest Added</h2>
+              <span class="pill">Airtable</span>
+            </div>
+            <div class="cards" id="newest-list"></div>
+          </section>
+        </aside>
+      </section>
+    </main>
 
     <script type="module" src="src/app.js"></script>
   </body>
