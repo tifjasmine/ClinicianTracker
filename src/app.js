@@ -174,34 +174,41 @@ function renderFollowers(rows) {
 
 function cardHtml(record) {
   const initial = (record.handle || "?").slice(0, 1).toUpperCase();
+  const status = record.relationshipStage || "No status";
   return `
     <article class="follower-card">
-      <div class="card-top">
-        <div class="avatar">${escapeHtml(initial)}</div>
-        <div class="card-title">
-          <a class="handle-link" href="https://www.instagram.com/${escapeAttribute(record.handle)}/" target="_blank" rel="noreferrer">@${escapeHtml(record.handle)}</a>
-          <span>Added ${formatDate(record.dateAdded || record.createdTime)}</span>
+      <details class="follower-details">
+        <summary class="card-top">
+          <div class="avatar">${escapeHtml(initial)}</div>
+          <div class="card-title">
+            <a class="handle-link" href="https://www.instagram.com/${escapeAttribute(record.handle)}/" target="_blank" rel="noreferrer">@${escapeHtml(record.handle)}</a>
+            <span>${formatDate(record.dateAdded || record.createdTime)}</span>
+          </div>
+          <span class="status-chip">${escapeHtml(status)}</span>
+          <span class="details-cue">Details</span>
+        </summary>
+        <div class="card-body">
+          <div class="field-grid">
+            <label>
+              <span>Status</span>
+              ${selectHtml(record.id, "relationshipStage", choices.stages, record.relationshipStage)}
+            </label>
+            <label>
+              <span>Audience</span>
+              ${selectHtml(record.id, "audienceType", choices.audiences, record.audienceType)}
+            </label>
+            <label>
+              <span>Offer</span>
+              ${selectHtml(record.id, "potentialOffer", choices.offers, record.potentialOffer)}
+            </label>
+          </div>
+          <label class="note-field">
+            <span>Notes</span>
+            <input class="notes-input" data-id="${record.id}" data-field="notes" value="${escapeAttribute(record.notes || "")}" placeholder="Add note" />
+          </label>
+          <button class="icon-button delete-button" data-id="${record.id}" data-handle="${escapeAttribute(record.handle)}" type="button" aria-label="Delete @${escapeAttribute(record.handle)}">Delete follower</button>
         </div>
-        <button class="icon-button delete-button" data-id="${record.id}" data-handle="${escapeAttribute(record.handle)}" type="button" aria-label="Delete @${escapeAttribute(record.handle)}">Delete</button>
-      </div>
-      <div class="field-grid">
-        <label>
-          <span>Status</span>
-          ${selectHtml(record.id, "relationshipStage", choices.stages, record.relationshipStage)}
-        </label>
-        <label>
-          <span>Audience</span>
-          ${selectHtml(record.id, "audienceType", choices.audiences, record.audienceType)}
-        </label>
-        <label>
-          <span>Offer</span>
-          ${selectHtml(record.id, "potentialOffer", choices.offers, record.potentialOffer)}
-        </label>
-      </div>
-      <label class="note-field">
-        <span>Notes</span>
-        <input class="notes-input" data-id="${record.id}" data-field="notes" value="${escapeAttribute(record.notes || "")}" placeholder="Add note" />
-      </label>
+      </details>
     </article>
   `;
 }
