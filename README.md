@@ -42,7 +42,7 @@ The app defaults to this Airtable base and table:
 
 ```text
 AIRTABLE_BASE_ID=appGsqyZtEuxBZNzF
-AIRTABLE_TABLE_ID=tblCIg4SCFqTAghyI
+AIRTABLE_TABLE_ID=Followers
 ```
 
 Default Airtable fields:
