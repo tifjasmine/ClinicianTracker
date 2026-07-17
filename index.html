@@ -20,6 +20,7 @@
           <a href="#dashboard" class="active">Dashboard</a>
           <a href="#quick-add">Quick Add</a>
           <a href="#followers">Followers</a>
+          <a href="#daily-check">Daily Check</a>
           <a href="#export">Export</a>
         </nav>
         <p class="sidebar-note">
@@ -100,7 +101,24 @@
                   <h2>Follower CRM</h2>
                   <p>Edit stage, audience, offer, and notes before exporting.</p>
                 </div>
+                <span class="pill" id="filtered-count">0 shown</span>
+              </div>
+              <div class="filters">
                 <input id="search-input" class="search" type="search" placeholder="Search handles" />
+                <select id="stage-filter" aria-label="Filter by stage">
+                  <option value="">All stages</option>
+                </select>
+                <select id="audience-filter" aria-label="Filter by audience">
+                  <option value="">All audiences</option>
+                </select>
+                <select id="offer-filter" aria-label="Filter by offer">
+                  <option value="">All offers</option>
+                </select>
+                <label class="checkbox-filter">
+                  <input id="new-filter" type="checkbox" />
+                  New only
+                </label>
+                <button class="button" id="reset-filters-button" type="button">Reset filters</button>
               </div>
               <div class="table-wrap">
                 <table>
@@ -111,6 +129,7 @@
                       <th>Audience</th>
                       <th>Potential Offer</th>
                       <th>Notes</th>
+                      <th></th>
                     </tr>
                   </thead>
                   <tbody id="followers-table"></tbody>
@@ -120,6 +139,22 @@
           </div>
 
           <aside class="side-column">
+            <section class="panel" id="daily-check">
+              <div class="panel-header compact">
+                <h2>Daily Check</h2>
+                <span class="pill">Watch mode</span>
+              </div>
+              <div class="daily-box">
+                <label for="target-account">Tracked account</label>
+                <input id="target-account" type="text" value="@theconfidentclinician" />
+                <p>
+                  Browser-only mode can compare pasted or imported snapshots. A fully automatic daily follower identity check needs a backend plus approved Instagram access or a connected automation service.
+                </p>
+                <button class="button full" id="copy-watch-plan-button" type="button">Copy daily watcher plan</button>
+                <p class="helper" id="watch-plan-result"></p>
+              </div>
+            </section>
+
             <section class="panel">
               <div class="panel-header compact">
                 <h2>Pipeline</h2>
