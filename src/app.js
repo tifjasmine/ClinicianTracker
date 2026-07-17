@@ -1,5 +1,6 @@
 const STORAGE_KEY = "clinician-tracker-followers-v1";
 const IMPORT_KEY = "clinician-tracker-last-import-v1";
+const IMPORT_HISTORY_KEY = "clinician-tracker-import-history-v1";
 
 const stages = ["New Follower", "Messaged", "Responded", "Potential Lead", "Offer Shared", "Purchased"];
 const audienceTypes = ["", "New Clinician", "Established Clinician", "Student / Intern", "Supervisor", "Professional Connection", "Unsure"];
@@ -38,6 +39,7 @@ const demoFollowers = [
 
 let followers = loadFollowers();
 let lastImport = loadLastImport();
+let importHistory = loadImportHistory();
 let searchQuery = "";
 let stageFilter = "";
 let audienceFilter = "";
@@ -62,20 +64,18 @@ const els = {
   offerFilter: document.getElementById("offer-filter"),
   newFilter: document.getElementById("new-filter"),
   filteredCount: document.getElementById("filtered-count"),
-  targetAccount: document.getElementById("target-account"),
-  watchPlanResult: document.getElementById("watch-plan-result"),
+  importHistoryList: document.getElementById("import-history-list"),
 };
 
 hydrateFilterOptions();
 document.getElementById("import-handles-button").addEventListener("click", importPastedHandles);
-document.getElementById("json-file-input").addEventListener("change", importJsonFiles);
+document.getElementById("export-file-input").addEventListener("change", importExportFiles);
 document.getElementById("load-demo-button").addEventListener("click", loadDemo);
 document.getElementById("clear-button").addEventListener("click", clearData);
 document.getElementById("download-csv-button").addEventListener("click", downloadCsv);
 document.getElementById("download-csv-button-side").addEventListener("click", downloadCsv);
 document.getElementById("download-json-button").addEventListener("click", downloadJson);
 document.getElementById("reset-filters-button").addEventListener("click", resetFilters);
-document.getElementById("copy-watch-plan-button").addEventListener("click", copyWatchPlan);
 els.searchInput.addEventListener("input", (event) => {
   searchQuery = event.target.value.trim().toLowerCase();
   render();
@@ -113,36 +113,43 @@ function importPastedHandles() {
   render();
 }
 
-async function importJsonFiles(event) {
+async function importExportFiles(event) {
   const files = [...event.target.files];
   if (!files.length) return;
 
-  const handles = [];
+  const importedFollowers = [];
 
   for (const file of files) {
     try {
-      const json = JSON.parse(await file.text());
-      handles.push(...parseInstagramJson(json).map((follower) => follower.handle));
+      const text = await file.text();
+      importedFollowers.push(...parseInstagramExportFile(text, file.name));
     } catch {
-      els.importResult.textContent = `Could not read ${file.name}. Use Instagram JSON export files.`;
+      els.importResult.textContent = `Could not read ${file.name}. Use Instagram JSON or followers_1.html export files.`;
       return;
     }
   }
 
-  const result = upsertHandles(handles, "Instagram JSON import");
-  els.importResult.textContent = `${result.newCount} new follower${result.newCount === 1 ? "" : "s"} added from JSON. ${followers.length} total known.`;
+  const result = upsertFollowerRecords(importedFollowers, "Instagram export import");
+  els.importResult.textContent = `${result.newCount} new follower${result.newCount === 1 ? "" : "s"} added from export. ${followers.length} total known.`;
   event.target.value = "";
   render();
 }
 
 function upsertHandles(rawHandles, source) {
+  return upsertFollowerRecords(uniqueHandles(rawHandles).map((handle) => ({ handle })), source);
+}
+
+function upsertFollowerRecords(records, source) {
   const now = new Date().toISOString();
   const existing = new Map(followers.map((follower) => [follower.handle, follower]));
   const newHandles = [];
 
-  for (const handle of uniqueHandles(rawHandles)) {
+  for (const importedRecord of uniqueFollowerRecords(records)) {
+    const handle = importedRecord.handle;
     if (!existing.has(handle)) {
       const record = recordForHandle(handle, source, {
+        profileUrl: importedRecord.profileUrl || `https://www.instagram.com/${handle}/`,
+        instagramFollowedAt: importedRecord.instagramFollowedAt || "",
         firstDetectedAt: now,
         lastSeenAt: now,
       });
@@ -154,6 +161,8 @@ function upsertHandles(rawHandles, source) {
     const record = existing.get(handle);
     existing.set(handle, {
       ...record,
+      profileUrl: record.profileUrl || importedRecord.profileUrl || `https://www.instagram.com/${handle}/`,
+      instagramFollowedAt: record.instagramFollowedAt || importedRecord.instagramFollowedAt || "",
       lastSeenAt: now,
       status: "Current",
     });
@@ -163,10 +172,11 @@ function upsertHandles(rawHandles, source) {
   lastImport = {
     importedAt: now,
     source,
-    submittedCount: rawHandles.length,
+    submittedCount: records.length,
     newCount: newHandles.length,
     newHandles,
   };
+  importHistory = [lastImport, ...importHistory].slice(0, 20);
   save();
 
   return lastImport;
@@ -189,6 +199,7 @@ function render() {
   renderNewest(followers.slice().sort(sortByNewest).slice(0, 10), newHandles);
   renderTable(rows, newHandles);
   renderPipeline();
+  renderImportHistory();
 }
 
 function renderNewest(rows, newHandles) {
@@ -206,7 +217,7 @@ function renderNewest(rows, newHandles) {
           <div class="avatar">${escapeHtml(follower.handle.slice(0, 1).toUpperCase())}</div>
           <div class="follower-main">
             <strong>@${escapeHtml(follower.handle)}</strong>
-            <span>${escapeHtml(follower.audienceType || "Audience not set")} · ${formatDate(follower.firstDetectedAt)}</span>
+            <span>Added ${formatDate(follower.firstDetectedAt)} · IG followed ${formatDate(follower.instagramFollowedAt)}</span>
           </div>
           <span class="status ${isNew ? "new" : ""}">${isNew ? "New" : escapeHtml(follower.relationshipStage || "Saved")}</span>
         </article>
@@ -217,24 +228,26 @@ function renderNewest(rows, newHandles) {
 
 function renderTable(rows, newHandles) {
   if (!rows.length) {
-    els.followersTable.innerHTML = `<tr><td colspan="6" class="empty-table">No matching followers.</td></tr>`;
+    els.followersTable.innerHTML = `<tr><td colspan="8" class="empty-table">No matching followers.</td></tr>`;
     return;
   }
 
   els.followersTable.innerHTML = rows
     .map((follower) => `
       <tr data-handle="${escapeHtml(follower.handle)}">
-        <td>
+        <td data-label="Handle">
           <div class="table-handle">
             <strong>@${escapeHtml(follower.handle)}</strong>
             ${newHandles.has(follower.handle) ? '<span class="mini-pill">New</span>' : ""}
           </div>
         </td>
-        <td>${selectHtml("relationshipStage", follower.handle, stages, follower.relationshipStage)}</td>
-        <td>${selectHtml("audienceType", follower.handle, audienceTypes, follower.audienceType)}</td>
-        <td>${selectHtml("potentialOffer", follower.handle, offerTypes, follower.potentialOffer)}</td>
-        <td><input class="notes-input" data-field="notes" data-handle="${escapeHtml(follower.handle)}" value="${escapeAttribute(follower.notes || "")}" placeholder="Add note" /></td>
-        <td><button class="icon-button delete-button" data-handle="${escapeHtml(follower.handle)}" type="button" aria-label="Delete @${escapeAttribute(follower.handle)}">Delete</button></td>
+        <td data-label="Date Added">${formatDate(follower.firstDetectedAt)}</td>
+        <td data-label="IG Followed">${formatDate(follower.instagramFollowedAt)}</td>
+        <td data-label="Stage">${selectHtml("relationshipStage", follower.handle, stages, follower.relationshipStage)}</td>
+        <td data-label="Audience">${selectHtml("audienceType", follower.handle, audienceTypes, follower.audienceType)}</td>
+        <td data-label="Potential Offer">${selectHtml("potentialOffer", follower.handle, offerTypes, follower.potentialOffer)}</td>
+        <td data-label="Notes"><input class="notes-input" data-field="notes" data-handle="${escapeHtml(follower.handle)}" value="${escapeAttribute(follower.notes || "")}" placeholder="Add note" /></td>
+        <td data-label="Actions"><button class="icon-button delete-button" data-handle="${escapeHtml(follower.handle)}" type="button" aria-label="Delete @${escapeAttribute(follower.handle)}">Delete</button></td>
       </tr>
     `)
     .join("");
@@ -264,6 +277,23 @@ function renderPipeline() {
         </div>
       `;
     })
+    .join("");
+}
+
+function renderImportHistory() {
+  if (!importHistory.length) {
+    els.importHistoryList.innerHTML = `<div class="empty compact-empty">No imports yet. Start with your followers_1.html file.</div>`;
+    return;
+  }
+
+  els.importHistoryList.innerHTML = importHistory
+    .slice(0, 6)
+    .map((item) => `
+      <article class="history-item">
+        <strong>${formatDateTime(item.importedAt)}</strong>
+        <span>${escapeHtml(item.source || "Import")} · ${item.newCount || 0} new · ${item.submittedCount || 0} checked</span>
+      </article>
+    `)
     .join("");
 }
 
@@ -308,6 +338,7 @@ function loadDemo() {
     newCount: 2,
     newHandles: ["newtherapistjane", "therapygrad2026"],
   };
+  importHistory = [lastImport];
   save();
   els.importResult.textContent = "Demo data loaded.";
   render();
@@ -318,8 +349,10 @@ function clearData() {
   if (!confirmed) return;
   followers = [];
   lastImport = null;
+  importHistory = [];
   localStorage.removeItem(STORAGE_KEY);
   localStorage.removeItem(IMPORT_KEY);
+  localStorage.removeItem(IMPORT_HISTORY_KEY);
   els.importResult.textContent = "Saved data cleared.";
   render();
 }
@@ -357,27 +390,8 @@ function downloadCsv() {
 }
 
 function downloadJson() {
-  const payload = JSON.stringify({ followers, lastImport }, null, 2);
+  const payload = JSON.stringify({ followers, lastImport, importHistory }, null, 2);
   downloadFile("clinician-tracker-backup.json", payload, "application/json");
-}
-
-function copyWatchPlan() {
-  const account = els.targetAccount.value.trim() || "@theconfidentclinician";
-  const plan = [
-    `Daily watcher plan for ${account}`,
-    "",
-    "1. Store follower records in Airtable or Supabase instead of browser localStorage.",
-    "2. Run a Netlify Scheduled Function once per day.",
-    "3. Use approved Instagram/Meta access for counts and interactions, or a compliant third-party service for identity snapshots.",
-    "4. Compare today's snapshot to yesterday's known handles.",
-    "5. Add newly detected handles to ClinicianTracker as New Follower.",
-    "6. Notify by email/Slack only when new handles are detected.",
-    "",
-    "Note: avoid automated login scraping of Instagram follower modals because it can be brittle and may put the account at risk.",
-  ].join("\n");
-
-  navigator.clipboard?.writeText(plan);
-  els.watchPlanResult.textContent = "Daily watcher plan copied.";
 }
 
 function extractHandles(text) {
@@ -402,6 +416,15 @@ function extractHandles(text) {
   return [...found];
 }
 
+function parseInstagramExportFile(text, fileName) {
+  if (fileName.toLowerCase().endsWith(".html")) {
+    return parseInstagramHtml(text);
+  }
+
+  const json = JSON.parse(text);
+  return parseInstagramJson(json);
+}
+
 function parseInstagramJson(json) {
   const entries = Array.isArray(json) ? json : Object.values(json).flat();
   const parsed = [];
@@ -420,6 +443,23 @@ function parseInstagramJson(json) {
   }
 
   return parsed;
+}
+
+function parseInstagramHtml(html) {
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  const links = [...doc.querySelectorAll('a[href*="instagram.com/"]')];
+
+  return links
+    .map((link) => {
+      const handle = normalizeHandle(link.textContent || link.href.split("instagram.com/")[1] || "");
+      const dateText = link.parentElement?.parentElement?.querySelector("div:nth-child(2)")?.textContent?.trim() || "";
+      return {
+        handle,
+        profileUrl: `https://www.instagram.com/${handle}/`,
+        instagramFollowedAt: parseInstagramDate(dateText),
+      };
+    })
+    .filter((record) => record.handle);
 }
 
 function visibleFollowers() {
@@ -485,6 +525,25 @@ function uniqueHandles(handles) {
   return [...new Set(handles.map(normalizeHandle).filter(Boolean))];
 }
 
+function uniqueFollowerRecords(records) {
+  const byHandle = new Map();
+  for (const record of records) {
+    const handle = normalizeHandle(record.handle);
+    if (!handle || byHandle.has(handle)) continue;
+    byHandle.set(handle, {
+      ...record,
+      handle,
+    });
+  }
+  return [...byHandle.values()];
+}
+
+function parseInstagramDate(value) {
+  if (!value) return "";
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? "" : parsed.toISOString();
+}
+
 function sortByNewest(a, b) {
   return dateValue(b.firstDetectedAt || b.instagramFollowedAt) - dateValue(a.firstDetectedAt || a.instagramFollowedAt);
 }
@@ -492,6 +551,7 @@ function sortByNewest(a, b) {
 function save() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(followers));
   localStorage.setItem(IMPORT_KEY, JSON.stringify(lastImport));
+  localStorage.setItem(IMPORT_HISTORY_KEY, JSON.stringify(importHistory));
 }
 
 function loadFollowers() {
@@ -507,6 +567,14 @@ function loadLastImport() {
     return JSON.parse(localStorage.getItem(IMPORT_KEY) || "null");
   } catch {
     return null;
+  }
+}
+
+function loadImportHistory() {
+  try {
+    return JSON.parse(localStorage.getItem(IMPORT_HISTORY_KEY) || "[]");
+  } catch {
+    return [];
   }
 }
 
@@ -538,8 +606,14 @@ function dateValue(value) {
 
 function formatDate(value) {
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Unknown date";
+  if (Number.isNaN(date.getTime())) return "Not set";
   return new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" }).format(date);
+}
+
+function formatDateTime(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Not set";
+  return new Intl.DateTimeFormat("en", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(date);
 }
 
 function escapeHtml(value) {
