@@ -3,7 +3,7 @@ const AIRTABLE_API = "https://api.airtable.com/v0";
 const config = {
   token: process.env.AIRTABLE_TOKEN || process.env.AIRTABLE_PAT,
   baseId: process.env.AIRTABLE_BASE_ID || "appGsqyZtEuxBZNzF",
-  tableId: process.env.AIRTABLE_TABLE_ID || "tblCIg4SCFqTAghyI",
+  tableId: process.env.AIRTABLE_TABLE_ID || "Followers",
   fields: {
     handle: process.env.AIRTABLE_HANDLE_FIELD || "IG Name",
     dateAdded: process.env.AIRTABLE_DATE_ADDED_FIELD || "Date",
@@ -40,7 +40,7 @@ async function listFollowers() {
     const params = new URLSearchParams({ pageSize: "100" });
     if (offset) params.set("offset", offset);
     const data = await airtableFetch(`?${params.toString()}`);
-    records.push(...(data.records || []).map(normalizeRecord));
+    records.push(...(data.records || []).map(normalizeRecord).filter((record) => record.handle));
     offset = data.offset || "";
   } while (offset);
 
