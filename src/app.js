@@ -52,7 +52,6 @@ const els = {
   saveAiButton: document.getElementById("save-ai-button"),
 };
 
-document.getElementById("refresh-button").addEventListener("click", loadFollowers);
 document.getElementById("reset-filters-button").addEventListener("click", resetFilters);
 document.querySelectorAll(".tab").forEach((tab) => tab.addEventListener("click", changeTab));
 els.search.addEventListener("input", (event) => {
@@ -136,9 +135,10 @@ async function updateFollowerField(event) {
   const id = event.target.dataset.id;
   const field = event.target.dataset.field;
   const value = event.target.value;
+  const openFollowerIds = collectOpenFollowerIds();
 
   followers = followers.map((record) => (record.id === id ? { ...record, [field]: value } : record));
-  render();
+  render(openFollowerIds);
 
   try {
     await apiRequest("/.netlify/functions/followers", {
@@ -169,7 +169,7 @@ async function deleteFollower(event) {
   }
 }
 
-function render() {
+function render(openFollowerIds = new Set()) {
   const rows = filteredFollowers();
   const warmOffers = new Set(["Workshop", "12-Week Program"]);
 
@@ -179,12 +179,12 @@ function render() {
   els.followUpCount.textContent = followers.filter((record) => Boolean(record.potentialOffer)).length;
   els.filteredCount.textContent = `${rows.length} shown`;
 
-  renderTable(rows);
+  renderTable(rows, openFollowerIds);
   renderPipeline();
-  renderNewest();
+  renderNewest(openFollowerIds);
 }
 
-function renderTable(rows) {
+function renderTable(rows, openFollowerIds = new Set()) {
   if (!rows.length) {
     els.table.innerHTML = `<tr><td colspan="8" class="empty-table">No matching followers.</td></tr>`;
     return;
@@ -204,7 +204,7 @@ function renderTable(rows) {
         <td data-label="Notes"><input class="notes-input" data-id="${record.id}" data-field="notes" value="${escapeAttribute(record.notes || "")}" placeholder="Add note" /></td>
         <td data-label="Actions"><button class="button delete-button" data-id="${record.id}" data-handle="${escapeAttribute(record.handle)}" type="button">Delete</button></td>
         <td class="mobile-row-cell">
-          <details class="mobile-follower">
+          <details class="mobile-follower" data-follower-id="${record.id}" ${openFollowerIds.has(record.id) ? "open" : ""}>
             <summary>
               <span>
                 <strong>@${escapeHtml(record.handle)}</strong>
@@ -265,7 +265,7 @@ function renderPipeline() {
     .join("");
 }
 
-function renderNewest() {
+function renderNewest(openFollowerIds = new Set()) {
   const newest = [...followers].sort(sortByDateAdded).slice(0, 6);
   if (!newest.length) {
     els.newestList.innerHTML = `<div class="empty compact-empty">No followers yet.</div>`;
@@ -273,17 +273,17 @@ function renderNewest() {
   }
 
   els.newestList.innerHTML = newest
-    .map((record) => dashboardFollowerHtml(record))
+    .map((record) => dashboardFollowerHtml(record, openFollowerIds))
     .join("");
   els.newestList.querySelectorAll("select, input").forEach((input) => input.addEventListener("change", updateFollowerField));
   els.newestList.querySelectorAll(".delete-button").forEach((button) => button.addEventListener("click", deleteFollower));
 }
 
-function dashboardFollowerHtml(record) {
+function dashboardFollowerHtml(record, openFollowerIds = new Set()) {
   const initial = (record.handle || "?").slice(0, 1).toUpperCase();
   return `
     <article class="mini-card dashboard-card">
-      <details class="dashboard-follower">
+      <details class="dashboard-follower" data-follower-id="${record.id}" ${openFollowerIds.has(record.id) ? "open" : ""}>
         <summary>
           <span class="mini-avatar">${escapeHtml(initial)}</span>
           <span class="dashboard-summary-copy">
@@ -320,6 +320,10 @@ function dashboardFollowerHtml(record) {
       </details>
     </article>
   `;
+}
+
+function collectOpenFollowerIds() {
+  return new Set([...document.querySelectorAll("details[data-follower-id][open]")].map((detail) => detail.dataset.followerId));
 }
 
 function hydrateToneControls() {
