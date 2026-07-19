@@ -10,57 +10,85 @@
     <main class="app-shell">
       <section class="hero">
         <div>
-          <p class="eyebrow">Airtable-connected CRM</p>
           <h1>ClinicianTracker</h1>
-          <p class="subtitle" id="status-copy">Loading Airtable followers...</p>
+          <p class="subtitle">Instagram outreach, from first follow to booked call.</p>
+          <p class="load-status" id="status-copy">Loading followers...</p>
         </div>
         <button class="button ghost" id="refresh-button" type="button">Refresh</button>
       </section>
 
-      <section class="metrics" aria-label="Follower metrics">
-        <article class="metric">
-          <span>Total</span>
-          <strong id="total-count">0</strong>
-        </article>
-        <article class="metric">
-          <span>New</span>
-          <strong id="new-count">0</strong>
-        </article>
-        <article class="metric">
-          <span>Warm</span>
-          <strong id="warm-count">0</strong>
-        </article>
-        <article class="metric">
-          <span>Offers</span>
-          <strong id="follow-up-count">0</strong>
-        </article>
+      <nav class="tabs" aria-label="Tracker views">
+        <button class="tab active" data-tab="dashboard" type="button">Dashboard</button>
+        <button class="tab" data-tab="followers" type="button">Followers</button>
+        <button class="tab" data-tab="saved" type="button">Saved Responses</button>
+        <button class="tab" data-tab="ai" type="button">AI Reply</button>
+      </nav>
+
+      <section class="view active" id="dashboard-view">
+        <section class="metrics" aria-label="Follower metrics">
+          <article class="metric">
+            <span>Total</span>
+            <strong id="total-count">0</strong>
+          </article>
+          <article class="metric">
+            <span>New</span>
+            <strong id="new-count">0</strong>
+          </article>
+          <article class="metric">
+            <span>Warm</span>
+            <strong id="warm-count">0</strong>
+          </article>
+          <article class="metric">
+            <span>Offers</span>
+            <strong id="follow-up-count">0</strong>
+          </article>
+        </section>
+
+        <section class="workspace">
+          <div class="main-column">
+            <section class="panel">
+              <div class="panel-header">
+                <div>
+                  <h2>Quick Add</h2>
+                  <p>Add a new Instagram follower.</p>
+                </div>
+              </div>
+              <form class="quick-add" id="quick-add-form">
+                <label>
+                  <span>Instagram handle</span>
+                  <input id="handle-input" name="handle" type="text" placeholder="@newtherapistjane" autocomplete="off" required />
+                </label>
+                <button class="button primary" type="submit">Add follower</button>
+              </form>
+              <p class="form-status" id="form-status"></p>
+            </section>
+
+            <section class="panel">
+              <div class="panel-header compact">
+                <h2>Newest Added</h2>
+              </div>
+              <div class="cards" id="newest-list"></div>
+            </section>
+          </div>
+
+          <aside class="side-column">
+            <section class="panel">
+              <div class="panel-header compact">
+                <h2>Pipeline</h2>
+              </div>
+              <div class="pipeline" id="pipeline"></div>
+            </section>
+          </aside>
+        </section>
       </section>
 
-      <section class="workspace">
-        <div class="main-column">
-          <section class="panel">
-            <div class="panel-header">
-              <div>
-                <h2>Quick Add</h2>
-                <p>Add a new Instagram follower directly to Airtable.</p>
-              </div>
-              <span class="pill">Writes to Airtable</span>
-            </div>
-            <form class="quick-add" id="quick-add-form">
-              <label>
-                <span>Instagram handle</span>
-                <input id="handle-input" name="handle" type="text" placeholder="@newtherapistjane" autocomplete="off" required />
-              </label>
-              <button class="button primary" type="submit">Add follower</button>
-            </form>
-            <p class="form-status" id="form-status"></p>
-          </section>
-
+      <section class="view" id="followers-view">
+        <section class="workspace one-column">
           <section class="panel">
             <div class="panel-header">
               <div>
                 <h2>Followers</h2>
-                <p>Filter, update, and clean up Airtable records.</p>
+                <p>Filter, update, and clean up your records.</p>
               </div>
               <span class="pill" id="filtered-count">0 shown</span>
             </div>
@@ -80,6 +108,7 @@
                     <th>Status</th>
                     <th>Audience</th>
                     <th>Offer</th>
+                    <th>Last Contacted</th>
                     <th>Notes</th>
                     <th></th>
                   </tr>
@@ -88,25 +117,66 @@
               </table>
             </div>
           </section>
-        </div>
+        </section>
+      </section>
 
-        <aside class="side-column">
-          <section class="panel">
-            <div class="panel-header compact">
-              <h2>Pipeline</h2>
-              <span class="pill">Statuses</span>
+      <section class="view" id="saved-view">
+        <section class="panel saved-panel">
+          <div class="panel-header">
+            <div>
+              <h2>Save a new response</h2>
+              <p>Keep the DMs that work so you can reuse them fast.</p>
             </div>
-            <div class="pipeline" id="pipeline"></div>
-          </section>
+          </div>
+          <form class="saved-form" id="saved-form">
+            <input id="response-title" type="text" placeholder="Label, e.g. Warm opener" />
+            <select id="response-tone"></select>
+            <textarea id="response-text" placeholder="Write the message..."></textarea>
+            <button class="button primary" type="submit">Save response</button>
+          </form>
+        </section>
+        <div class="tone-tabs" id="tone-tabs"></div>
+        <section class="response-grid" id="responses-list"></section>
+      </section>
 
+      <section class="view" id="ai-view">
+        <section class="ai-grid">
           <section class="panel">
-            <div class="panel-header compact">
-              <h2>Newest Added</h2>
-              <span class="pill">Airtable</span>
+            <div class="panel-header">
+              <div>
+                <h2>Draft a reply</h2>
+                <p>Paste what they said and pick a tone.</p>
+              </div>
             </div>
-            <div class="cards" id="newest-list"></div>
+            <form class="ai-form" id="ai-form">
+              <label>
+                <span>Their message</span>
+                <textarea id="ai-input" placeholder="Paste their DM..."></textarea>
+              </label>
+              <div class="two-fields">
+                <label>
+                  <span>Tone</span>
+                  <select id="ai-tone"></select>
+                </label>
+                <label>
+                  <span>Context</span>
+                  <input id="ai-context" type="text" placeholder="e.g. student, asked about price" />
+                </label>
+              </div>
+              <button class="button primary" type="submit">Generate reply</button>
+            </form>
           </section>
-        </aside>
+          <section class="panel">
+            <div class="panel-header">
+              <h2>Suggested reply</h2>
+            </div>
+            <div class="ai-result" id="ai-result">Your drafted reply will appear here.</div>
+            <div class="ai-actions">
+              <button class="button" id="copy-ai-button" type="button">Copy</button>
+              <button class="button" id="save-ai-button" type="button">Save to library</button>
+            </div>
+          </section>
+        </section>
       </section>
     </main>
 
