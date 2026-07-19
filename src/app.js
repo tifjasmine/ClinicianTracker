@@ -1,8 +1,13 @@
 const defaultStages = ["New Follower", "Messaged", "Responded", "Potential Lead", "Offer Shared", "Purchased"];
 const defaultAudiences = ["", "New Clinician", "Established Clinician", "Student / Intern", "Supervisor", "Professional Connection", "Unsure"];
 const defaultOffers = ["", "Workshop", "12-Week Program", "Collaboration", "Professional Connection", "Not a Fit Right Now"];
+const toneOptions = ["Warm & personal", "Professional & credible", "Direct & concise", "Playful & casual"];
 
 let followers = [];
+let activeTab = "dashboard";
+let toneFilter = "All";
+let aiResult = "";
+let savedResponses = loadSavedResponses();
 let choices = {
   stages: defaultStages,
   audiences: defaultAudiences,
@@ -32,10 +37,24 @@ const els = {
   handleInput: document.getElementById("handle-input"),
   form: document.getElementById("quick-add-form"),
   formStatus: document.getElementById("form-status"),
+  savedForm: document.getElementById("saved-form"),
+  responseTitle: document.getElementById("response-title"),
+  responseTone: document.getElementById("response-tone"),
+  responseText: document.getElementById("response-text"),
+  toneTabs: document.getElementById("tone-tabs"),
+  responsesList: document.getElementById("responses-list"),
+  aiForm: document.getElementById("ai-form"),
+  aiInput: document.getElementById("ai-input"),
+  aiTone: document.getElementById("ai-tone"),
+  aiContext: document.getElementById("ai-context"),
+  aiResult: document.getElementById("ai-result"),
+  copyAiButton: document.getElementById("copy-ai-button"),
+  saveAiButton: document.getElementById("save-ai-button"),
 };
 
 document.getElementById("refresh-button").addEventListener("click", loadFollowers);
 document.getElementById("reset-filters-button").addEventListener("click", resetFilters);
+document.querySelectorAll(".tab").forEach((tab) => tab.addEventListener("click", changeTab));
 els.search.addEventListener("input", (event) => {
   filters.search = event.target.value.trim().toLowerCase();
   render();
@@ -53,9 +72,21 @@ els.offerFilter.addEventListener("change", (event) => {
   render();
 });
 els.form.addEventListener("submit", createFollower);
+els.savedForm.addEventListener("submit", createSavedResponse);
+els.aiForm.addEventListener("submit", generateReply);
+els.copyAiButton.addEventListener("click", () => copyText(aiResult));
+els.saveAiButton.addEventListener("click", saveAiResponse);
 
 hydrateChoiceControls();
+hydrateToneControls();
+renderSavedResponses();
 loadFollowers();
+
+function changeTab(event) {
+  activeTab = event.currentTarget.dataset.tab;
+  document.querySelectorAll(".tab").forEach((tab) => tab.classList.toggle("active", tab.dataset.tab === activeTab));
+  document.querySelectorAll(".view").forEach((view) => view.classList.toggle("active", view.id === `${activeTab}-view`));
+}
 
 async function loadFollowers() {
   setStatus("Loading Airtable followers...");
@@ -155,7 +186,7 @@ function render() {
 
 function renderTable(rows) {
   if (!rows.length) {
-    els.table.innerHTML = `<tr><td colspan="7" class="empty-table">No matching followers.</td></tr>`;
+    els.table.innerHTML = `<tr><td colspan="8" class="empty-table">No matching followers.</td></tr>`;
     return;
   }
 
@@ -169,6 +200,7 @@ function renderTable(rows) {
         <td data-label="Status">${selectHtml(record.id, "relationshipStage", choices.stages, record.relationshipStage)}</td>
         <td data-label="Audience">${selectHtml(record.id, "audienceType", choices.audiences, record.audienceType)}</td>
         <td data-label="Offer">${selectHtml(record.id, "potentialOffer", choices.offers, record.potentialOffer)}</td>
+        <td data-label="Last Contacted"><input class="date-input" type="date" data-id="${record.id}" data-field="lastContacted" value="${escapeAttribute(record.lastContacted || "")}" /></td>
         <td data-label="Notes"><input class="notes-input" data-id="${record.id}" data-field="notes" value="${escapeAttribute(record.notes || "")}" placeholder="Add note" /></td>
         <td data-label="Actions"><button class="button delete-button" data-id="${record.id}" data-handle="${escapeAttribute(record.handle)}" type="button">Delete</button></td>
         <td class="mobile-row-cell">
@@ -192,6 +224,10 @@ function renderTable(rows) {
               <label>
                 <span>Offer</span>
                 ${selectHtml(record.id, "potentialOffer", choices.offers, record.potentialOffer)}
+              </label>
+              <label>
+                <span>Last Contacted</span>
+                <input class="date-input" type="date" data-id="${record.id}" data-field="lastContacted" value="${escapeAttribute(record.lastContacted || "")}" />
               </label>
               <label>
                 <span>Notes</span>
@@ -244,6 +280,117 @@ function renderNewest() {
       </article>
     `)
     .join("");
+}
+
+function hydrateToneControls() {
+  const options = toneOptions.map((tone) => `<option value="${escapeAttribute(tone)}">${escapeHtml(tone)}</option>`).join("");
+  els.responseTone.innerHTML = options;
+  els.aiTone.innerHTML = options;
+  renderToneTabs();
+}
+
+function renderToneTabs() {
+  els.toneTabs.innerHTML = ["All", ...toneOptions]
+    .map((tone) => `<button class="tone-tab ${toneFilter === tone ? "active" : ""}" data-tone="${escapeAttribute(tone)}" type="button">${escapeHtml(tone)}</button>`)
+    .join("");
+  els.toneTabs.querySelectorAll("button").forEach((button) => button.addEventListener("click", () => {
+    toneFilter = button.dataset.tone;
+    renderToneTabs();
+    renderSavedResponses();
+  }));
+}
+
+function createSavedResponse(event) {
+  event.preventDefault();
+  const text = els.responseText.value.trim();
+  if (!text) return;
+  savedResponses = [{
+    id: `response-${Date.now()}`,
+    title: els.responseTitle.value.trim() || "Untitled response",
+    tone: els.responseTone.value,
+    text,
+  }, ...savedResponses];
+  saveResponses();
+  els.savedForm.reset();
+  els.responseTone.value = toneOptions[0];
+  renderSavedResponses();
+}
+
+function renderSavedResponses() {
+  const rows = savedResponses.filter((response) => toneFilter === "All" || response.tone === toneFilter);
+  if (!rows.length) {
+    els.responsesList.innerHTML = `<div class="empty">No saved responses yet.</div>`;
+    return;
+  }
+  els.responsesList.innerHTML = rows.map((response) => `
+    <article class="response-card">
+      <div class="response-header">
+        <h3>${escapeHtml(response.title)}</h3>
+        <button class="text-button remove-response" data-id="${response.id}" type="button">Remove</button>
+      </div>
+      <span class="tone-pill">${escapeHtml(response.tone)}</span>
+      <p>${escapeHtml(response.text)}</p>
+      <button class="button copy-response" data-text="${escapeAttribute(response.text)}" type="button">Copy</button>
+    </article>
+  `).join("");
+  els.responsesList.querySelectorAll(".copy-response").forEach((button) => button.addEventListener("click", () => copyText(button.dataset.text)));
+  els.responsesList.querySelectorAll(".remove-response").forEach((button) => button.addEventListener("click", () => {
+    savedResponses = savedResponses.filter((response) => response.id !== button.dataset.id);
+    saveResponses();
+    renderSavedResponses();
+  }));
+}
+
+function generateReply(event) {
+  event.preventDefault();
+  const message = els.aiInput.value.trim();
+  if (!message) return;
+  const tone = els.aiTone.value;
+  const context = els.aiContext.value.trim();
+  const opener = tone === "Playful & casual"
+    ? "Yay, love this."
+    : tone === "Direct & concise"
+      ? "Thanks for sharing that."
+      : "I love that you reached out.";
+  const contextLine = context ? ` Since you mentioned ${context},` : "";
+  aiResult = `${opener}${contextLine} I would be happy to walk you through what might fit best, whether that is the workshop, the 12-week program, or a collaboration. What sounds most useful to you right now?`;
+  els.aiResult.textContent = aiResult;
+}
+
+function saveAiResponse() {
+  if (!aiResult) return;
+  savedResponses = [{
+    id: `response-${Date.now()}`,
+    title: "AI reply",
+    tone: els.aiTone.value,
+    text: aiResult,
+  }, ...savedResponses];
+  saveResponses();
+  renderSavedResponses();
+}
+
+function copyText(text) {
+  if (!text) return;
+  navigator.clipboard?.writeText(text).catch(() => {});
+}
+
+function loadSavedResponses() {
+  try {
+    const stored = JSON.parse(localStorage.getItem("clinicianTrackerResponses") || "[]");
+    if (Array.isArray(stored) && stored.length) return stored;
+  } catch {
+    // Keep the default library if local storage is unavailable.
+  }
+  return [
+    { id: "tpl-1", title: "Feedback ask (grad students)", tone: "Warm & personal", text: "Ohh congrats on your journey!! So close to finishing!! I would love to pick your brain for 60 seconds. Can I send over a quick form with a few questions?" },
+    { id: "tpl-2", title: "Follow-up nudge", tone: "Direct & concise", text: "Hey! Just floating this back up, still curious to hear your thoughts whenever you get a sec. No pressure at all." },
+    { id: "tpl-3", title: "Workshop pitch", tone: "Professional & credible", text: "I am putting together a workshop for clinicians on this topic, practical, no fluff, built from what I have seen work in the room. Want me to send the details?" },
+    { id: "tpl-4", title: "Thanks for replying", tone: "Playful & casual", text: "Yay, love that! Okay here is the scoop, let me know what jumps out and we will go from there." },
+  ];
+}
+
+function saveResponses() {
+  localStorage.setItem("clinicianTrackerResponses", JSON.stringify(savedResponses));
 }
 
 function filteredFollowers() {
