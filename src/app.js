@@ -89,14 +89,14 @@ function changeTab(event) {
 }
 
 async function loadFollowers() {
-  setStatus("Loading Airtable followers...");
+  setStatus("Loading followers...");
   try {
     const data = await apiRequest("/.netlify/functions/followers");
     followers = data.records || [];
     choices = mergeChoices(data.choices || {});
     hydrateChoiceControls();
     render();
-    setStatus(`${followers.length} Airtable follower${followers.length === 1 ? "" : "s"} loaded.`);
+    setStatus(`${followers.length} follower${followers.length === 1 ? "" : "s"} loaded.`);
   } catch (error) {
     followers = [];
     render();
@@ -117,7 +117,7 @@ async function createFollower(event) {
     return;
   }
 
-  els.formStatus.textContent = "Adding to Airtable...";
+  els.formStatus.textContent = "Adding follower...";
   try {
     await apiRequest("/.netlify/functions/followers", {
       method: "POST",
@@ -125,7 +125,7 @@ async function createFollower(event) {
     });
     els.form.reset();
     els.handleInput.focus();
-    els.formStatus.textContent = "Added to Airtable.";
+    els.formStatus.textContent = "Added.";
     await loadFollowers();
   } catch (error) {
     els.formStatus.textContent = error.message;
@@ -154,7 +154,7 @@ async function updateFollowerField(event) {
 async function deleteFollower(event) {
   const id = event.target.dataset.id;
   const handle = event.target.dataset.handle;
-  const confirmed = window.confirm(`Delete @${handle} from Airtable?`);
+  const confirmed = window.confirm(`Delete @${handle}?`);
   if (!confirmed) return;
 
   try {
@@ -273,13 +273,53 @@ function renderNewest() {
   }
 
   els.newestList.innerHTML = newest
-    .map((record) => `
-      <article class="mini-card">
-        <strong>@${escapeHtml(record.handle)}</strong>
-        <span>${formatDate(record.dateAdded || record.createdTime)} · ${escapeHtml(record.relationshipStage || "No status")}</span>
-      </article>
-    `)
+    .map((record) => dashboardFollowerHtml(record))
     .join("");
+  els.newestList.querySelectorAll("select, input").forEach((input) => input.addEventListener("change", updateFollowerField));
+  els.newestList.querySelectorAll(".delete-button").forEach((button) => button.addEventListener("click", deleteFollower));
+}
+
+function dashboardFollowerHtml(record) {
+  const initial = (record.handle || "?").slice(0, 1).toUpperCase();
+  return `
+    <article class="mini-card dashboard-card">
+      <details class="dashboard-follower">
+        <summary>
+          <span class="mini-avatar">${escapeHtml(initial)}</span>
+          <span class="dashboard-summary-copy">
+            <strong>@${escapeHtml(record.handle)}</strong>
+            <small>${escapeHtml(record.relationshipStage || "No status")}</small>
+          </span>
+        </summary>
+        <div class="dashboard-card-body">
+          <p>Added ${formatDate(record.dateAdded || record.createdTime)} · <a href="https://www.instagram.com/${escapeAttribute(record.handle)}/" target="_blank" rel="noreferrer">view on IG</a></p>
+          <div class="dashboard-field-grid">
+            <label>
+              <span>Status</span>
+              ${selectHtml(record.id, "relationshipStage", choices.stages, record.relationshipStage)}
+            </label>
+            <label>
+              <span>Audience</span>
+              ${selectHtml(record.id, "audienceType", choices.audiences, record.audienceType)}
+            </label>
+            <label>
+              <span>Offer</span>
+              ${selectHtml(record.id, "potentialOffer", choices.offers, record.potentialOffer)}
+            </label>
+            <label>
+              <span>Last Contacted</span>
+              <input class="date-input" type="date" data-id="${record.id}" data-field="lastContacted" value="${escapeAttribute(record.lastContacted || "")}" />
+            </label>
+            <label class="dashboard-notes">
+              <span>Notes</span>
+              <input class="notes-input" data-id="${record.id}" data-field="notes" value="${escapeAttribute(record.notes || "")}" placeholder="Add note" />
+            </label>
+          </div>
+          <button class="button delete-button" data-id="${record.id}" data-handle="${escapeAttribute(record.handle)}" type="button">Delete follower</button>
+        </div>
+      </details>
+    </article>
+  `;
 }
 
 function hydrateToneControls() {
@@ -341,20 +381,24 @@ function renderSavedResponses() {
   }));
 }
 
-function generateReply(event) {
+async function generateReply(event) {
   event.preventDefault();
   const message = els.aiInput.value.trim();
   if (!message) return;
   const tone = els.aiTone.value;
   const context = els.aiContext.value.trim();
-  const opener = tone === "Playful & casual"
-    ? "Yay, love this."
-    : tone === "Direct & concise"
-      ? "Thanks for sharing that."
-      : "I love that you reached out.";
-  const contextLine = context ? ` Since you mentioned ${context},` : "";
-  aiResult = `${opener}${contextLine} I would be happy to walk you through what might fit best, whether that is the workshop, the 12-week program, or a collaboration. What sounds most useful to you right now?`;
-  els.aiResult.textContent = aiResult;
+  els.aiResult.textContent = "Writing...";
+  try {
+    const data = await apiRequest("/.netlify/functions/ai-reply", {
+      method: "POST",
+      body: JSON.stringify({ message, tone, context }),
+    });
+    aiResult = data.reply || "";
+    els.aiResult.textContent = aiResult || "I could not generate a reply. Try again.";
+  } catch (error) {
+    aiResult = "";
+    els.aiResult.textContent = error.message;
+  }
 }
 
 function saveAiResponse() {
