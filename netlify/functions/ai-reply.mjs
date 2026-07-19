@@ -24,7 +24,7 @@ export async function handler(event) {
 async function generateReply(input) {
   if (process.env.OPENAI_API_KEY) return openaiReply(input);
   if (process.env.ANTHROPIC_API_KEY) return anthropicReply(input);
-  throw new Error("AI is not connected yet. Add OPENAI_API_KEY or ANTHROPIC_API_KEY in Netlify environment variables.");
+  throw new Error("AI needs to be connected in Netlify before it can generate replies.");
 }
 
 async function openaiReply({ message, tone, context }) {
