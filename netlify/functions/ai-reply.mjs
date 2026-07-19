@@ -24,8 +24,8 @@ export async function handler(event) {
 }
 
 async function generateReply(input) {
-  if (process.env.GEMINI_API_KEY) return geminiReply(input);
   if (process.env.OPENAI_API_KEY) return openaiReply(input);
+  if (process.env.GEMINI_API_KEY) return geminiReply(input);
   if (process.env.ANTHROPIC_API_KEY) return anthropicReply(input);
   throw new Error("AI needs to be connected in Netlify before it can generate replies.");
 }
