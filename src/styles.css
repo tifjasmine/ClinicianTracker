@@ -69,12 +69,17 @@ h2 {
 }
 
 .subtitle,
+.load-status,
 .panel-header p,
 .form-status {
   margin-bottom: 0;
   color: var(--muted);
   font-size: 13px;
   line-height: 1.5;
+}
+
+.load-status {
+  margin-top: 6px;
 }
 
 .button {
@@ -95,6 +100,40 @@ h2 {
 
 .button.ghost {
   background: transparent;
+}
+
+.tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  margin: 0 -4px 18px;
+  padding: 0 4px 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.tab {
+  min-height: 38px;
+  border: 0;
+  border-radius: 9px;
+  padding: 8px 16px;
+  background: transparent;
+  color: #6d5b50;
+  cursor: pointer;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.tab.active {
+  background: #9f4723;
+  color: #fff;
+}
+
+.view {
+  display: none;
+}
+
+.view.active {
+  display: block;
 }
 
 .delete-button:hover {
@@ -136,6 +175,10 @@ h2 {
   display: grid;
   grid-template-columns: minmax(0, 1.5fr) minmax(300px, 0.75fr);
   gap: 12px;
+}
+
+.workspace.one-column {
+  grid-template-columns: 1fr;
 }
 
 .main-column,
@@ -195,6 +238,7 @@ h2 {
 .filters input,
 .filters select,
 td select,
+.date-input,
 .notes-input {
   width: 100%;
   min-height: 36px;
@@ -312,13 +356,175 @@ th {
   color: var(--muted);
 }
 
+.saved-panel,
+.ai-grid {
+  width: min(1240px, 100%);
+  margin: 0 auto;
+}
+
+.saved-form,
+.ai-form {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+}
+
+.saved-form {
+  grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr);
+}
+
+.saved-form textarea,
+.ai-form textarea,
+.ai-form input,
+.saved-form input,
+.saved-form select,
+.ai-form select {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 11px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+}
+
+.saved-form textarea {
+  grid-column: 1 / -1;
+  min-height: 88px;
+  resize: vertical;
+}
+
+.saved-form .button {
+  justify-self: start;
+}
+
+.tone-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: min(1240px, 100%);
+  margin: 14px auto;
+}
+
+.tone-tab {
+  min-height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 14px;
+  background: #fff;
+  color: #5e4d44;
+  cursor: pointer;
+  font-weight: 750;
+}
+
+.tone-tab.active {
+  border-color: #9f4723;
+  background: #9f4723;
+  color: #fff;
+}
+
+.response-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 12px;
+  width: min(1240px, 100%);
+  margin: 0 auto;
+}
+
+.response-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+  background: #fff;
+}
+
+.response-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.response-card h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.response-card p {
+  margin: 12px 0;
+  line-height: 1.45;
+}
+
+.tone-pill {
+  display: inline-flex;
+  margin-top: 10px;
+  border-radius: 999px;
+  padding: 3px 9px;
+  background: #f5ded4;
+  color: #9f4723;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.text-button {
+  border: 0;
+  background: transparent;
+  color: #b72e2e;
+  cursor: pointer;
+  font: inherit;
+}
+
+.ai-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 1fr);
+  gap: 14px;
+}
+
+.ai-form label {
+  display: grid;
+  gap: 6px;
+  color: #6d5b50;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.ai-form textarea {
+  min-height: 130px;
+  resize: vertical;
+}
+
+.two-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.ai-result {
+  min-height: 130px;
+  margin: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+  background: #fffdf9;
+  line-height: 1.55;
+}
+
+.ai-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 14px 14px;
+}
+
 @media (max-width: 1080px) {
   .workspace {
     grid-template-columns: 1fr;
   }
 
   .quick-add,
-  .filters {
+  .filters,
+  .ai-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -338,7 +544,10 @@ th {
   }
 
   .quick-add,
-  .filters {
+  .filters,
+  .saved-form,
+  .ai-grid,
+  .two-fields {
     grid-template-columns: 1fr;
   }
 
