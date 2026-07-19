@@ -370,13 +370,18 @@ th {
 
 .mini-avatar {
   display: inline-grid;
+  flex: 0 0 36px;
   place-items: center;
   width: 36px;
   height: 36px;
+  margin-top: 0;
   border-radius: 50%;
   background: #dbeadd;
   color: var(--sage-dark);
+  font-size: 14px;
   font-weight: 850;
+  line-height: 1;
+  text-align: center;
 }
 
 .dashboard-summary-copy {
