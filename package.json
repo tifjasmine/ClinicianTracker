@@ -5,6 +5,6 @@
   "description": "Instagram follower and clinician lead tracker for Netlify.",
   "scripts": {
     "dev": "python3 -m http.server 4177",
-    "build": "node -e \"console.log('Static app: no build step needed')\""
+    "build": "node scripts/build.mjs"
   }
 }
