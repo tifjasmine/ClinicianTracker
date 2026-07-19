@@ -12,6 +12,7 @@ const config = {
     offer: process.env.AIRTABLE_OFFER_FIELD || "Potential Offer",
     notes: process.env.AIRTABLE_NOTES_FIELD || "Notes",
     nextFollowUp: process.env.AIRTABLE_NEXT_FOLLOW_UP_FIELD || "Next Follow-Up",
+    lastContacted: process.env.AIRTABLE_LAST_CONTACTED_FIELD || "Last Contacted",
   },
 };
 
@@ -77,6 +78,7 @@ async function updateFollower(payload) {
       audienceType: config.fields.audience,
       potentialOffer: config.fields.offer,
       notes: config.fields.notes,
+      lastContacted: config.fields.lastContacted,
     }[key];
     if (airtableField) fields[airtableField] = value || null;
   }
@@ -155,6 +157,7 @@ function normalizeRecord(record = {}) {
     potentialOffer: pick(fields, [config.fields.offer, "Offer"]),
     notes: pick(fields, [config.fields.notes, "Note"]),
     nextFollowUp: pick(fields, [config.fields.nextFollowUp, "Follow Up", "Follow-Up"]),
+    lastContacted: pick(fields, [config.fields.lastContacted, "Last Contact", "Last Contacted Date"]),
     rawFields: fields,
   };
 }
