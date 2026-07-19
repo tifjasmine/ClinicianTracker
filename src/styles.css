@@ -104,14 +104,15 @@ h2 {
 
 .tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
-  overflow-x: auto;
   margin: 0 -4px 18px;
   padding: 0 4px 10px;
   border-bottom: 1px solid var(--line);
 }
 
 .tab {
+  flex: 0 1 auto;
   min-height: 38px;
   border: 0;
   border-radius: 9px;
@@ -335,8 +336,11 @@ th {
 .mini-card {
   border: 1px solid var(--line);
   border-radius: 8px;
-  padding: 10px;
   background: #fbfbf7;
+}
+
+.mini-card:not(.dashboard-card) {
+  padding: 10px;
 }
 
 .mini-card strong,
@@ -348,6 +352,83 @@ th {
   margin-top: 4px;
   color: var(--muted);
   font-size: 12px;
+}
+
+.dashboard-follower summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 58px;
+  padding: 10px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.dashboard-follower summary::-webkit-details-marker {
+  display: none;
+}
+
+.mini-avatar {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #dbeadd;
+  color: var(--sage-dark);
+  font-weight: 850;
+}
+
+.dashboard-summary-copy {
+  min-width: 0;
+}
+
+.dashboard-summary-copy strong {
+  overflow: hidden;
+  color: var(--ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-summary-copy small {
+  display: block;
+  margin-top: 3px;
+  color: #6d5b50;
+  font-size: 12px;
+}
+
+.dashboard-card-body {
+  display: grid;
+  gap: 10px;
+  padding: 0 10px 10px 56px;
+}
+
+.dashboard-card-body p {
+  margin: 0;
+  color: #6d5b50;
+  font-size: 12px;
+}
+
+.dashboard-card-body a {
+  color: #9f4723;
+}
+
+.dashboard-field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.dashboard-field-grid label {
+  display: grid;
+  gap: 5px;
+  color: #6d5b50;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.dashboard-notes {
+  grid-column: 1 / -1;
 }
 
 .empty,
@@ -534,6 +615,20 @@ th {
     padding: 14px;
   }
 
+  .tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-inline: 0;
+    padding-inline: 0;
+  }
+
+  .tab {
+    width: 100%;
+    padding: 8px 10px;
+    text-align: center;
+    white-space: normal;
+  }
+
   .hero,
   .panel-header {
     display: grid;
@@ -649,5 +744,13 @@ th {
 
   .delete-button {
     width: 100%;
+  }
+
+  .dashboard-card-body {
+    padding: 0 10px 10px;
+  }
+
+  .dashboard-field-grid {
+    grid-template-columns: 1fr;
   }
 }
