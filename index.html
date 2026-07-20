@@ -20,7 +20,6 @@
         <button class="tab active" data-tab="dashboard" type="button">Dashboard</button>
         <button class="tab" data-tab="followers" type="button">Followers</button>
         <button class="tab" data-tab="saved" type="button">Saved Responses</button>
-        <button class="tab" data-tab="ai" type="button">AI Reply</button>
       </nav>
 
       <section class="view active" id="dashboard-view">
@@ -136,46 +135,6 @@
         </section>
         <div class="tone-tabs" id="tone-tabs"></div>
         <section class="response-grid" id="responses-list"></section>
-      </section>
-
-      <section class="view" id="ai-view">
-        <section class="ai-grid">
-          <section class="panel">
-            <div class="panel-header">
-              <div>
-                <h2>Draft a reply</h2>
-                <p>Paste what they said and pick a tone.</p>
-              </div>
-            </div>
-            <form class="ai-form" id="ai-form">
-              <label>
-                <span>Their message</span>
-                <textarea id="ai-input" placeholder="Paste their DM..."></textarea>
-              </label>
-              <div class="two-fields">
-                <label>
-                  <span>Tone</span>
-                  <select id="ai-tone"></select>
-                </label>
-                <label>
-                  <span>Context</span>
-                  <input id="ai-context" type="text" placeholder="e.g. student, asked about price" />
-                </label>
-              </div>
-              <button class="button primary" type="submit">Generate reply</button>
-            </form>
-          </section>
-          <section class="panel">
-            <div class="panel-header">
-              <h2>Suggested reply</h2>
-            </div>
-            <div class="ai-result" id="ai-result">Your drafted reply will appear here.</div>
-            <div class="ai-actions">
-              <button class="button" id="copy-ai-button" type="button">Copy</button>
-              <button class="button" id="save-ai-button" type="button">Save to library</button>
-            </div>
-          </section>
-        </section>
       </section>
     </main>
 
