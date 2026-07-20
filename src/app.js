@@ -6,7 +6,6 @@ const toneOptions = ["Warm & personal", "Professional & credible", "Direct & con
 let followers = [];
 let activeTab = "dashboard";
 let toneFilter = "All";
-let aiResult = "";
 let savedResponses = loadSavedResponses();
 let choices = {
   stages: defaultStages,
@@ -43,13 +42,6 @@ const els = {
   responseText: document.getElementById("response-text"),
   toneTabs: document.getElementById("tone-tabs"),
   responsesList: document.getElementById("responses-list"),
-  aiForm: document.getElementById("ai-form"),
-  aiInput: document.getElementById("ai-input"),
-  aiTone: document.getElementById("ai-tone"),
-  aiContext: document.getElementById("ai-context"),
-  aiResult: document.getElementById("ai-result"),
-  copyAiButton: document.getElementById("copy-ai-button"),
-  saveAiButton: document.getElementById("save-ai-button"),
 };
 
 document.getElementById("reset-filters-button").addEventListener("click", resetFilters);
@@ -72,9 +64,6 @@ els.offerFilter.addEventListener("change", (event) => {
 });
 els.form.addEventListener("submit", createFollower);
 els.savedForm.addEventListener("submit", createSavedResponse);
-els.aiForm.addEventListener("submit", generateReply);
-els.copyAiButton.addEventListener("click", () => copyText(aiResult));
-els.saveAiButton.addEventListener("click", saveAiResponse);
 
 hydrateChoiceControls();
 hydrateToneControls();
@@ -280,19 +269,18 @@ function renderNewest(openFollowerIds = new Set()) {
 }
 
 function dashboardFollowerHtml(record, openFollowerIds = new Set()) {
-  const initial = (record.handle || "?").slice(0, 1).toUpperCase();
   return `
     <article class="mini-card dashboard-card">
       <details class="dashboard-follower" data-follower-id="${record.id}" ${openFollowerIds.has(record.id) ? "open" : ""}>
         <summary>
-          <span class="mini-avatar">${escapeHtml(initial)}</span>
           <span class="dashboard-summary-copy">
             <strong>@${escapeHtml(record.handle)}</strong>
-            <small>${escapeHtml(record.relationshipStage || "No status")}</small>
+            <small>Added ${formatDate(record.dateAdded || record.createdTime)}</small>
           </span>
+          <span class="dashboard-status-pill">${escapeHtml(record.relationshipStage || "No status")}</span>
         </summary>
         <div class="dashboard-card-body">
-          <p>Added ${formatDate(record.dateAdded || record.createdTime)} · <a href="https://www.instagram.com/${escapeAttribute(record.handle)}/" target="_blank" rel="noreferrer">view on IG</a></p>
+          <p><a href="https://www.instagram.com/${escapeAttribute(record.handle)}/" target="_blank" rel="noreferrer">View on Instagram</a></p>
           <div class="dashboard-field-grid">
             <label>
               <span>Status</span>
@@ -329,7 +317,6 @@ function collectOpenFollowerIds() {
 function hydrateToneControls() {
   const options = toneOptions.map((tone) => `<option value="${escapeAttribute(tone)}">${escapeHtml(tone)}</option>`).join("");
   els.responseTone.innerHTML = options;
-  els.aiTone.innerHTML = options;
   renderToneTabs();
 }
 
@@ -383,38 +370,6 @@ function renderSavedResponses() {
     saveResponses();
     renderSavedResponses();
   }));
-}
-
-async function generateReply(event) {
-  event.preventDefault();
-  const message = els.aiInput.value.trim();
-  if (!message) return;
-  const tone = els.aiTone.value;
-  const context = els.aiContext.value.trim();
-  els.aiResult.textContent = "Writing...";
-  try {
-    const data = await apiRequest("/.netlify/functions/ai-reply", {
-      method: "POST",
-      body: JSON.stringify({ message, tone, context }),
-    });
-    aiResult = data.reply || "";
-    els.aiResult.textContent = aiResult || "I could not generate a reply. Try again.";
-  } catch (error) {
-    aiResult = "";
-    els.aiResult.textContent = error.message;
-  }
-}
-
-function saveAiResponse() {
-  if (!aiResult) return;
-  savedResponses = [{
-    id: `response-${Date.now()}`,
-    title: "AI reply",
-    tone: els.aiTone.value,
-    text: aiResult,
-  }, ...savedResponses];
-  saveResponses();
-  renderSavedResponses();
 }
 
 function copyText(text) {
